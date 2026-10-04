@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Partner catalogue — Dattingsite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<header class="nav" data-navbar></header>
+
+<main class="page">
+  <div class="container">
+
+    <div class="dash-head">
+      <div>
+        <span class="eyebrow">Curated catalogue</span>
+        <h1 class="dash-title">Partners worth unlocking</h1>
+        <p class="lead mt-2">
+          Every profile is selected for compatibility. Browse free — pay only for the
+          conversations you actually want.
+        </p>
+      </div>
+      <button class="btn btn-outline btn-sm" type="button" id="topUpBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Add funds
+      </button>
+    </div>
+
+    <!-- Tier summary cards -->
+    <div class="grid grid-3 mb-8" id="tierSummary"></div>
+
+    <!-- Filters -->
+    <div class="filter-bar">
+      <div class="segmented" id="tierFilter">
+        <button class="segmented-btn is-active" type="button" data-tier="all">
+          All <span class="badge-soft" id="countAll">0</span>
+        </button>
+        <button class="segmented-btn" type="button" data-tier="Standard">
+          Standard <span id="countStandard">0</span>
+        </button>
+        <button class="segmented-btn" type="button" data-tier="Premium">
+          Premium <span id="countPremium">0</span>
+        </button>
+        <button class="segmented-btn" type="button" data-tier="Elite">
+          Elite <span id="countElite">0</span>
+        </button>
+      </div>
+      <div class="ml-auto row gap-2 wrap">
+        <label class="check" style="align-items:center">
+          <input type="checkbox" id="hideUnlocked" />
+          <span class="small">Hide unlocked</span>
+        </label>
+        <div class="segmented">
+          <button class="segmented-btn is-active" type="button" data-sort="recommended">Recommended</button>
+          <button class="segmented-btn" type="button" data-sort="price-asc">Price: low to high</button>
+          <button class="segmented-btn" type="button" data-sort="price-desc">Price: high to low</button>
+          <button class="segmented-btn" type="button" data-sort="age">By age</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="between mb-4">
+      <h2 style="font-size:1.25rem" id="gridTitle">All partners</h2>
+      <span class="small muted" id="resultCount"></span>
+    </div>
+
+    <div class="grid grid-4" id="grid"></div>
+
+    <div id="emptyState" class="hide">
+      <div class="empty">
+        <div class="empty-icon">&#128269;</div>
+        <div class="empty-title">Nothing in this view</div>
+        <div class="empty-text">Adjust the tier or sorting options to see the rest of the catalogue.</div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+  App.requireAuth(true);
+  App.boot('catalogue.html');
+
+  var profile = App.profile();
+  var partners = App.data.partnersFor(profile.gender);
+  var tier = 'all';
+  var sort = 'recommended';
+  var hideUnlocked = false;
+
+  /* Deep link support: catalogue.html?tier=Premium */
+  var params = new URLSearchParams(location.search);
+  if (params.get('tier')) {
+    var t = params.get('tier');
+    if (['Standard', 'Premium', 'Elite'].indexOf(t) !== -1) tier = t;
+  }
+
+  /* ---------- Tier summary ---------- */
+  function renderTierSummary() {
+    var wrap = document.getElementById('tierSummary');
+    wrap.innerHTML = ['Standard', 'Premium', 'Elite'].map(function (name) {
+      var info = App.data.getTierInfo(name);
+      var count = partners.filter(function (p) { return p.tier === name; }).length;
+      var unlockedCount = partners.filter(function (p) { return p.tier === name && App.isUnlocked(p.id); }).length;
+      var featured = name === 'Premium';
+      var unlockedPct = count ? Math.round((unlockedCount / count) * 100) : 0;
+
+      return '<article class="tier-card' + (featured ? ' is-featured' : '') + '" style="padding:var(--s-6)">' +
+        (featured ? '<span class="tier-flag">Most popular</span>' : '') +
+        '<div class="between">' +
+          '<span class="' + App.tierClass(name) + '">' + name + '</span>' +
+          '<span class="tiny muted">' + count + ' available</span>' +
+        '</div>' +
+        '<div class="tier-price" style="font-size:2rem"><sup>$</sup>' + info.price.toFixed(2) + '</div>' +
+        '<p class="tier-note">' + info.note + '</p>' +
+        '<div class="small" style="opacity:.85;margin-bottom:var(--s-3)">' + unlockedCount + ' of ' + count + ' unlocked</div>' +
+        '<div class="progress-track"><div class="progress-fill" style="width:' + unlockedPct + '%"></div></div>' +
+      '</article>';
+    }).join('');
+  }
+
+  /* ---------- Card markup (locked by default until unlocked) ---------- */
+  function cardHtml(p) {
+    var unlocked = App.isUnlocked(p.id);
+    var info = App.data.getTierInfo(p.tier);
+    var photo = App.img(p, 600);
+    var tags = p.tags.slice(0, 3).map(function (t) { return '<span class="tag tag-rose">' + App.esc(t) + '</span>'; }).join('');
+
+    var lock = unlocked ? '' :
+      '<div class="pcard-lock" data-unlock="' + p.id + '">' +
+        '<div class="pcard-lock-icon">' +
+          '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+            '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>' +
+          '</svg>' +
+        '</div>' +
+        '<div class="pcard-lock-title">Unlock partner</div>' +
+        '<div class="pcard-lock-price">' + App.money(info.price) + ' &middot; ' + p.tier + '</div>' +
+      '</div>';
+
+    var actions = unlocked
+      ? '<a class="btn btn-primary btn-sm" href="chat.html?with=' + p.id + '">Open chat</a>' +
+        '<button class="btn btn-outline btn-sm" type="button" data-peek="' + p.id + '">Profile</button>'
+      : '<button class="btn btn-primary btn-sm" type="button" data-unlock="' + p.id + '">Unlock ' + App.money(info.price) + '</button>' +
+        '<button class="btn btn-ghost btn-sm" type="button" data-peek="' + p.id + '">Peek</button>';
+
+    return '<article class="pcard' + (unlocked ? '' : ' pcard-locked') + '" data-tier="' + p.tier + '" data-price="' + info.price + '" data-age="' + p.age + '">' +
+      '<div class="pcard-media">' +
+        '<img class="pcard-img" src="' + photo + '" alt="' + App.esc(p.name) + '" loading="lazy" />' +
+        '<div class="pcard-badges"><span class="' + App.tierClass(p.tier) + '">' + p.tier + '</span></div>' +
+        '<div class="pcard-badge-r">' + (p.isBot ? '<span class="badge badge-ai">AI</span>' : '<span class="badge badge-human">Human</span>') + '</div>' +
+        lock +
+        '<div class="pcard-media-foot">' +
+          '<div class="pcard-name">' + App.esc(p.name) + ', ' + p.age + '</div>' +
+          '<div class="pcard-meta">' + App.esc(p.city) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="pcard-body">' +
+        '<div class="pcard-tags">' + tags + '</div>' +
+        '<p class="pcard-bio">' + App.esc(unlocked ? p.bio : 'Profile details unlock once you pay the ' + p.tier.toLowerCase() + ' tier price of ' + App.money(info.price) + '.') + '</p>' +
+      '</div>' +
+      '<div class="pcard-actions">' + actions + '</div>' +
+    '</article>';
+  }
+
+  /* ---------- Render ---------- */
+  function render() {
+    var list = partners.filter(function (p) {
+      if (tier !== 'all' && p.tier !== tier) return false;
+      if (hideUnlocked && App.isUnlocked(p.id)) return false;
+      return true;
+    });
+
+    if (sort === 'price-asc')  list.sort(function (a, b) { return App.data.priceFor(a.tier) - App.data.priceFor(b.tier); });
+    if (sort === 'price-desc') list.sort(function (a, b) { return App.data.priceFor(b.tier) - App.data.priceFor(a.tier); });
+    if (sort === 'age')        list.sort(function (a, b) { return a.age - b.age; });
+
+    var grid = document.getElementById('grid');
+    grid.innerHTML = list.map(cardHtml).join('');
+
+    document.getElementById('resultCount').textContent = list.length + ' ' + (list.length === 1 ? 'partner' : 'partners');
+    document.getElementById('gridTitle').textContent = tier === 'all' ? 'All partners' : tier + ' tier';
+    document.getElementById('emptyState').classList.toggle('hide', list.length > 0);
+    grid.classList.toggle('hide', list.length === 0);
+
+    // filter counts
+    ['all', 'Standard', 'Premium', 'Elite'].forEach(function (name) {
+      var el = document.getElementById('count' + name);
+      if (el) el.textContent = name === 'all' ? partners.length : partners.filter(function (p) { return p.tier === name; }).length;
+    });
+  }
+
+  (function skeleton() {
+    document.getElementById('grid').innerHTML = new Array(8).join('<div class="skeleton skeleton-card"></div>');
+    setTimeout(function () { renderTierSummary(); render(); }, 340);
+  })();
+
+  /* ---------- Filters ---------- */
+  document.getElementById('tierFilter').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-tier]');
+    if (!btn) return;
+    tier = btn.getAttribute('data-tier');
+    this.querySelectorAll('.segmented-btn').forEach(function (b) { b.classList.remove('is-active'); });
+    btn.classList.add('is-active');
+    render();
+  });
+
+  document.querySelectorAll('[data-sort]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      sort = btn.getAttribute('data-sort');
+      document.querySelectorAll('[data-sort]').forEach(function (b) { b.classList.remove('is-active'); });
+      btn.classList.add('is-active');
+      render();
+    });
+  });
+
+  document.getElementById('hideUnlocked').addEventListener('change', function () {
+    hideUnlocked = this.checked;
+    render();
+  });
+
+  document.getElementById('topUpBtn').addEventListener('click', function () { App.openTopUp(); });
+
+  /* ---------- Peek (blurred preview modal) ---------- */
+  function openPeek(p) {
+    var info = App.data.getTierInfo(p.tier);
+    var unlocked = App.isUnlocked(p.id);
+
+    App.modal(
+      '<div class="modal-head">' +
+        '<div class="modal-hero">' +
+          '<img class="avatar avatar-md" src="' + App.img(p, 200) + '" alt="" />' +
+          '<div>' +
+            '<h3>' + App.esc(p.name) + ', ' + p.age + '</h3>' +
+            '<p class="small" style="color:rgba(255,255,255,.86);margin-top:3px">' + App.esc(p.city) + '</p>' +
+            '<div class="mt-2">' + App.tierClass(p.tier) + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<button class="modal-close" type="button" data-close aria-label="Close">&times;</button>' +
+      '</div>' +
+      '<div class="modal-body">' +
+        '<div style="position:relative;filter:blur(6px);user-select:none;pointer-events:none">' +
+          '<p class="mb-4">' + App.esc(p.bio) + '</p>' +
+          '<div class="row wrap gap-2">' + p.tags.map(function (t) { return '<span class="tag">' + App.esc(t) + '</span>'; }).join('') + '</div>' +
+        '</div>' +
+        '<div class="alert alert-info mt-6" style="margin-bottom:var(--s-6)">' +
+          '<span>&#128274;</span>' +
+          '<span>' + (unlocked
+            ? 'This profile is unlocked. Head to the chat to say hello.'
+            : 'Unlock the ' + p.tier + ' tier for ' + App.money(info.price) + ' to reveal this profile and start a conversation.') + '</span>' +
+        '</div>' +
+        (unlocked
+          ? '<a class="btn btn-primary btn-block btn-lg" href="chat.html?with=' + p.id + '">Open conversation</a>'
+          : '<button class="btn btn-primary btn-block btn-lg" type="button" id="peekUnlock">Unlock ' + App.money(info.price) + '</button>') +
+      '</div>',
+      {
+        onMount: function (root) {
+          root.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', App.closeModal); });
+          var btn = root.querySelector('#peekUnlock');
+          if (btn) {
+            btn.addEventListener('click', function () {
+              App.closeModal();
+              openUnlockModal(p);
+            });
+          }
+        }
+      }
+    );
+  }
+
+  /* ---------- Unlock flow (payment modal) ---------- */
+  function openUnlockModal(p) {
+    var info = App.data.getTierInfo(p.tier);
+    var method = 'wallet';
+
+    App.modal(
+      '<div class="modal-head">' +
+        '<div class="modal-hero">' +
+          '<img class="avatar avatar-md" src="' + App.img(p, 200) + '" alt="" />' +
+          '<div>' +
+            '<h3>Unlock ' + App.esc(p.name) + '</h3>' +
+            '<p class="small" style="color:rgba(255,255,255,.86);margin-top:3px">' + p.age + ' &middot; ' + App.esc(p.city) + '</p>' +
+          '</div>' +
+        '</div>' +
+        '<button class="modal-close" type="button" data-close aria-label="Close">&times;</button>' +
+      '</div>' +
+
+      '<div class="modal-body">' +
+        '<div class="modal-price grad-text">' + App.money(info.price) + '</div>' +
+        '<p class="center small muted" style="margin-top:-8px">' + info.label + ' tier &middot; ' + info.note + '</p>' +
+
+        '<ul class="tier-feats mt-6">' +
+          info.perks.map(function (perk) { return '<li><span class="tick">&#10003;</span><span class="small">' + App.esc(perk) + '</span></li>'; }).join('') +
+        '</ul>' +
+
+        '<div class="field mt-6">' +
+          '<label class="label">How would you like to pay?</label>' +
+          '<div class="pay-grid" id="payGrid">' +
+            '<div class="pay-card is-active" data-method="wallet" tabindex="0">' +
+              '<div class="pay-logo" style="font-size:1.3rem">&#128176;</div>' +
+              '<div class="pay-title">Wallet</div>' +
+              '<div class="pay-sub" id="walletSub">' + App.money(App.balance()) + '</div>' +
+            '</div>' +
+            '<div class="pay-card" data-method="stripe" tabindex="0">' +
+              '<div class="pay-logo" style="color:#635bff;font-weight:800;font-size:.8rem">stripe</div>' +
+              '<div class="pay-title">Card</div>' +
+              '<div class="pay-sub">Stripe</div>' +
+            '</div>' +
+            '<div class="pay-card" data-method="paypal" tabindex="0">' +
+              '<div class="pay-logo" style="color:#003087;font-weight:800;font-size:.78rem">PayPal</div>' +
+              '<div class="pay-title">PayPal</div>' +
+              '<div class="pay-sub">Wallet or card</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div id="unlockStatus" class="mt-4"></div>' +
+
+        '<button class="btn btn-primary btn-block btn-lg mt-6" type="button" id="confirmUnlock">Unlock partner &middot; ' + App.money(info.price) + '</button>' +
+        '<p class="center tiny muted mt-4">One-time payment. No subscription, no hidden fees.</p>' +
+      '</div>',
+      {
+        onMount: function (root) {
+          var status = root.querySelector('#unlockStatus');
+          var confirm = root.querySelector('#confirmUnlock');
+          var card = root.querySelector('#cardPreview');
+
+          root.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', App.closeModal); });
+
+          function choose(m) {
+            method = m;
+            root.querySelectorAll('#payGrid .pay-card').forEach(function (c) {
+              c.classList.toggle('is-active', c.getAttribute('data-method') === m);
+            });
+            if (m === 'wallet' && App.balance() < info.price) {
+              status.innerHTML =
+                '<div class="alert alert-warn">' +
+                  '<span>&#9888;</span>' +
+                  '<span>Your wallet has ' + App.money(App.balance()) + ' but this unlock costs ' + App.money(info.price) + '. ' +
+                  '<button class="btn btn-outline btn-sm mt-2" type="button" id="quickTopUp" style="display:block">Add funds</button></span>' +
+                '</div>';
+              var q = status.querySelector('#quickTopUp');
+              if (q) q.addEventListener('click', function () { App.closeModal(); App.openTopUp(); });
+            } else {
+              status.innerHTML = '';
+            }
+          }
+
+          root.querySelectorAll('#payGrid .pay-card').forEach(function (c) {
+            c.addEventListener('click', function () { choose(c.getAttribute('data-method')); });
+            c.addEventListener('keydown', function (e) {
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(c.getAttribute('data-method')); }
+            });
+          });
+
+          choose('wallet');
+
+          confirm.addEventListener('click', function () {
+            confirm.disabled = true;
+            confirm.innerHTML = '<span class="spinner"></span> Processing payment\u2026';
+
+            App.unlock(p.id, method, function (stage) {
+              if (stage === 'checking') {
+                status.innerHTML =
+                  '<div class="processing" style="padding:var(--s-6) 0">' +
+                    '<div class="spinner-ring"></div>' +
+                    '<div class="strong small">Verifying wallet balance\u2026</div>' +
+                  '</div>';
+              } else if (stage === 'gateway') {
+                status.innerHTML =
+                  '<div class="processing" style="padding:var(--s-6) 0">' +
+                    '<div class="spinner-ring spinner-ring-indigo"></div>' +
+                    '<div class="strong small">Opening secure checkout\u2026</div>' +
+                    '<div class="tiny muted">' + (method === 'stripe' ? 'Stripe' : 'PayPal') + ' sandbox &middot; no real charge is made</div>' +
+                  '</div>';
+              }
+            }).then(function (res) {
+              status.innerHTML =
+                '<div class="processing">' +
+                  '<div class="check-burst">&#10003;</div>' +
+                  '<div class="strong">' + App.esc(p.name) + ' is unlocked</div>' +
+                  '<div class="small muted">' + App.money(res.price) + ' paid via ' + (res.label || 'wallet') +
+                    (method === 'wallet' ? ' &middot; ' + App.money(res.balance) + ' remaining' : '') + '</div>' +
+                '</div>';
+              confirm.disabled = false;
+              confirm.innerHTML = 'Start the conversation';
+              confirm.classList.remove('btn-primary');
+              confirm.classList.add('btn-gold');
+              confirm.onclick = function () { location.href = 'chat.html?with=' + p.id; };
+
+              App.refreshChrome();
+              render();
+              App.toast('Partner unlocked', p.name + ' is ready to chat with.', 'success');
+            }).catch(function (err) {
+              confirm.disabled = false;
+              confirm.innerHTML = 'Unlock partner &middot; ' + App.money(info.price);
+              status.innerHTML = '<div class="alert alert-danger"><span>&#9888;</span><span>' + App.esc(err.message) + '</span></div>';
+            });
+          });
+        }
+      }
+    );
+  }
+
+  /* ---------- Delegated clicks ---------- */
+  document.addEventListener('click', function (e) {
+    var unlockBtn = e.target.closest('[data-unlock]');
+    if (unlockBtn) {
+      var p = App.data.partnerById(unlockBtn.getAttribute('data-unlock'));
+      if (p) openUnlockModal(p);
+      return;
+    }
+    var peekBtn = e.target.closest('[data-peek]');
+    if (peekBtn) {
+      var p2 = App.data.partnerById(peekBtn.getAttribute('data-peek'));
+      if (p2) openPeek(p2);
+    }
+  });
+</script>
+</body>
+</html>

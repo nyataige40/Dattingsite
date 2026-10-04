@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Set up your profile — Dattingsite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<header class="nav" data-navbar></header>
+
+<main class="page">
+  <div class="container onboard-wrap">
+
+    <div class="center mb-8">
+      <span class="eyebrow" style="justify-content:center">Profile setup</span>
+      <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)">Let us build your profile</h1>
+      <p class="lead mt-2" style="margin-inline:auto">Three quick steps. You can change everything later.</p>
+    </div>
+
+    <!-- Stepper -->
+    <div class="stepper mb-8">
+      <div class="stepper-node is-current" id="node1">1</div>
+      <div class="stepper-bar" id="bar1"></div>
+      <div class="stepper-node" id="node2">2</div>
+      <div class="stepper-bar" id="bar2"></div>
+      <div class="stepper-node" id="node3">3</div>
+    </div>
+
+    <div id="alert"></div>
+
+    <!-- ============ STEP 1: Basics ============ -->
+    <section class="card card-glass step-panel" id="step1">
+      <div class="step-title">
+        <span class="step-title-emoji">&#128100;</span>
+        <h2>The basics</h2>
+      </div>
+      <p class="small muted mb-6">This determines who you are introduced to.</p>
+
+      <div class="stack gap-6">
+        <div class="field">
+          <label class="label">I am a</label>
+          <div class="tiles" id="genderTiles">
+            <div class="tile is-active" data-gender="Man" tabindex="0" role="button" aria-pressed="true">
+              <span class="tile-check">&#10003;</span>
+              <span class="tile-icon">&#128104;</span>
+              <span class="tile-title">Man</span>
+              <span class="tile-sub">Meet women</span>
+            </div>
+            <div class="tile" data-gender="Woman" tabindex="0" role="button" aria-pressed="false">
+              <span class="tile-check">&#10003;</span>
+              <span class="tile-icon">&#128105;</span>
+              <span class="tile-title">Woman</span>
+              <span class="tile-sub">Meet men</span>
+            </div>
+          </div>
+          <span class="hint">Your companion conversations are matched to this choice.</span>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="field">
+            <label class="label" for="age">My age</label>
+            <input class="input" id="age" type="number" min="18" max="99" placeholder="30" />
+          </div>
+          <div class="field">
+            <label class="label" for="city">City</label>
+            <input class="input" id="city" type="text" placeholder="San Francisco, CA" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ STEP 2: Photo ============ -->
+    <section class="card card-glass step-panel hide" id="step2">
+      <div class="step-title">
+        <span class="step-title-emoji">&#128247;</span>
+        <h2>Your photo</h2>
+      </div>
+      <p class="small muted mb-6">Profiles with a photo get far more interest. Your first impression matters.</p>
+
+      <div class="photo-drop" id="photoDrop" role="button" tabindex="0">
+        <input type="file" id="photoInput" accept="image/*" class="hide" />
+
+        <div id="photoPreviewWrap">
+          <div class="photo-placeholder">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+          </div>
+        </div>
+
+        <div>
+          <p class="strong" id="photoTitle">Click to upload a photo</p>
+          <p class="small muted mt-2" id="photoHint">JPG or PNG, up to 5MB. A clear, smiling photo works best.</p>
+        </div>
+      </div>
+
+      <div class="row gap-3 mt-6" style="justify-content:center">
+        <button class="btn btn-outline btn-sm" type="button" id="chooseFile">Choose file</button>
+        <button class="btn btn-ghost btn-sm" type="button" id="useSample">Use a sample photo</button>
+      </div>
+    </section>
+
+    <!-- ============ STEP 3: Interests + Bio ============ -->
+    <section class="card card-glass step-panel hide" id="step3">
+      <div class="step-title">
+        <span class="step-title-emoji">&#10084;</span>
+        <h2>Interests &amp; about you</h2>
+      </div>
+      <p class="small muted mb-6">Pick at least three. These drive your match quality.</p>
+
+      <div class="field">
+        <label class="label">I'm into <span class="muted" id="interestCount">(0 selected)</span></label>
+        <div class="chips" id="interestChips"></div>
+      </div>
+
+      <div class="field mt-6">
+        <label class="label" for="bio">A short bio</label>
+        <textarea class="input" id="bio" maxlength="280" placeholder="Tell people what you are like in a few honest sentences&#8230;"></textarea>
+        <div class="between">
+          <span class="hint">A little personality goes a long way.</span>
+          <span class="hint"><span id="bioCount">0</span>/280</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Nav buttons -->
+    <div class="between mt-8">
+      <button class="btn btn-ghost" type="button" id="backBtn" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Back
+      </button>
+
+      <button class="btn btn-primary btn-lg" type="button" id="nextBtn">Continue</button>
+    </div>
+
+  </div>
+</main>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+  App.requireAuth();
+  App.boot('onboarding.html');
+
+  var state = {
+    step: 1,
+    gender: 'Man',
+    age: '',
+    city: '',
+    photo: '',
+    interests: [],
+    bio: ''
+  };
+
+  var alertBox = document.getElementById('alert');
+  var backBtn  = document.getElementById('backBtn');
+  var nextBtn  = document.getElementById('nextBtn');
+
+  function showError(text) {
+    alertBox.innerHTML = '<div class="alert alert-danger"><span>\u26A0</span><span>' + App.esc(text) + '</span></div>';
+    alertBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  function clearError() { alertBox.innerHTML = ''; }
+
+  /* ---------- Gender tiles ---------- */
+  var genderTiles = document.querySelectorAll('#genderTiles .tile');
+  function selectTile(el) {
+    genderTiles.forEach(function (t) {
+      var on = t === el;
+      t.classList.toggle('is-active', on);
+      t.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    state.gender = el.getAttribute('data-gender');
+  }
+  genderTiles.forEach(function (tile) {
+    tile.addEventListener('click', function () { selectTile(tile); });
+    tile.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectTile(tile); }
+    });
+  });
+
+  /* ---------- Interest chips ---------- */
+  var chipWrap = document.getElementById('interestChips');
+  var countEl  = document.getElementById('interestCount');
+
+  App.INTERESTS.forEach(function (name) {
+    var chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip';
+    chip.textContent = name;
+    chip.addEventListener('click', function () {
+      var i = state.interests.indexOf(name);
+      if (i === -1) state.interests.push(name); else state.interests.splice(i, 1);
+      chip.classList.toggle('is-active');
+      countEl.textContent = '(' + state.interests.length + ' selected)';
+    });
+    chipWrap.appendChild(chip);
+  });
+
+  /* ---------- Photo ---------- */
+  var drop        = document.getElementById('photoDrop');
+  var fileInput   = document.getElementById('photoInput');
+  var previewWrap = document.getElementById('photoPreviewWrap');
+  var photoTitle  = document.getElementById('photoTitle');
+  var photoHint   = document.getElementById('photoHint');
+
+  function setPhoto(dataUrl) {
+    state.photo = dataUrl;
+    previewWrap.innerHTML = '<img class="photo-preview" src="' + dataUrl + '" alt="Your profile photo" />';
+    drop.classList.add('has-image');
+    photoTitle.textContent = 'Looking good — click to change';
+    photoHint.textContent = 'Your photo is stored privately and never shared without your consent.';
+  }
+
+  function readFile(file) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      showError('That image is larger than 5MB. Please choose a smaller file.');
+      return;
+    }
+    if (file.type.indexOf('image/') !== 0) {
+      showError('Please choose an image file (JPG or PNG).');
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function (e) { setPhoto(e.target.result); clearError(); };
+    reader.readAsDataURL(file);
+  }
+
+  drop.addEventListener('click', function () { fileInput.click(); });
+  drop.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+  });
+  drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.style.borderColor = 'var(--primary)'; });
+  drop.addEventListener('dragleave', function () { drop.style.borderColor = ''; });
+  drop.addEventListener('drop', function (e) {
+    e.preventDefault();
+    drop.style.borderColor = '';
+    readFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', function () { readFile(this.files[0]); });
+  document.getElementById('chooseFile').addEventListener('click', function (e) { e.stopPropagation(); fileInput.click(); });
+
+  var samples = [20, 32, 44, 47, 49];
+  document.getElementById('useSample').addEventListener('click', function (e) {
+    e.stopPropagation();
+    var n = samples[Math.floor(Math.random() * samples.length)];
+    setPhoto('https://i.pravatar.cc/400?img=' + n);
+    clearError();
+  });
+
+  /* ---------- Bio counter ---------- */
+  var bio     = document.getElementById('bio');
+  var bioCount= document.getElementById('bioCount');
+  bio.addEventListener('input', function () { bioCount.textContent = bio.value.length; });
+
+  /* ---------- Step navigation ---------- */
+  function render() {
+    ['step1', 'step2', 'step3'].forEach(function (id, i) {
+      var n = i + 1;
+      var panel = document.getElementById(id);
+      var node  = document.getElementById('node' + n);
+      var bar   = document.getElementById('bar' + (n - 1));
+
+      panel.classList.toggle('hide', n !== state.step);
+      node.classList.toggle('is-current', n === state.step);
+      node.classList.toggle('is-done', n < state.step);
+      node.innerHTML = n < state.step ? '&#10003;' : String(n);
+      if (bar) bar.classList.toggle('is-done', n - 1 < state.step);
+    });
+
+    backBtn.disabled = state.step === 1;
+    nextBtn.textContent = state.step === 3 ? 'Finish and discover' : 'Continue';
+    nextBtn.className = state.step === 3 ? 'btn btn-primary btn-lg' : 'btn btn-primary btn-lg';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function validateStep(n) {
+    if (n === 1) {
+      var age = parseInt(document.getElementById('age').value, 10);
+      if (!age || age < 18 || age > 99) return 'Please enter an age between 18 and 99.';
+      state.age = age;
+      state.city = document.getElementById('city').value.trim();
+      if (!state.city) return 'Please tell us which city you are in.';
+    }
+    if (n === 2) {
+      if (!state.photo) return 'Please add a profile photo — or choose a sample to continue.';
+    }
+    if (n === 3) {
+      if (state.interests.length < 3) return 'Please select at least three interests.';
+      state.bio = bio.value.trim();
+      if (state.bio.length < 24) return 'Please write a slightly longer bio — at least a sentence or two.';
+    }
+    return null;
+  }
+
+  nextBtn.addEventListener('click', function () {
+    clearError();
+    var problem = validateStep(state.step);
+    if (problem) { showError(problem); return; }
+
+    if (state.step < 3) {
+      state.step++;
+      render();
+      return;
+    }
+
+    App.saveProfile({
+      gender: state.gender,
+      age: state.age,
+      city: state.city,
+      photo: state.photo,
+      interests: state.interests,
+      bio: state.bio
+    });
+
+    nextBtn.disabled = true;
+    nextBtn.innerHTML = '<span class="spinner"></span> Preparing your matches\u2026';
+
+    App.toast('Profile complete', 'Curating your first matches.', 'success', 2200);
+
+    setTimeout(function () {
+      // Seed interest alerts for the very first dashboard visit
+      if (!App.sawInterest()) {
+        var picks = App.data.partnersFor(state.gender);
+        App.notify(App.data.pick(picks).id ? shuffle(picks).slice(0, 3).map(function (p) {
+          return App.data.makeInterest(p);
+        }) : []);
+      }
+      location.href = 'dashboard.html';
+    }, 900);
+  });
+
+  backBtn.addEventListener('click', function () {
+    clearError();
+    if (state.step > 1) { state.step--; render(); }
+  });
+
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+
+  render();
+</script>
+</body>
+</html>

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Conversations — Dattingsite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<header class="nav" data-navbar></header>
+
+<main class="chat-layout">
+
+  <!-- ============ Sidebar: unlocked partners ============ -->
+  <aside class="chat-side">
+    <div class="chat-side-head">
+      <h2 style="font-size:1.1rem">Conversations</h2>
+      <p class="tiny muted mt-2" id="chatCount">0 unlocked</p>
+      <div class="chat-side-search mt-4">
+        <input class="input" id="chatSearch" type="search" placeholder="Search conversations" />
+      </div>
+    </div>
+    <div class="chat-list" id="chatList"></div>
+  </aside>
+
+  <!-- ============ Main conversation ============ -->
+  <section class="chat-main" id="chatMain">
+    <div class="chat-empty" id="emptyPane">
+      <div>
+        <div class="chat-empty-icon">&#128172;</div>
+        <h3 style="font-size:1.35rem">No conversation selected</h3>
+        <p class="muted mt-3" style="max-width:40ch">
+          Pick someone from your unlocked list, or
+          <a href="catalogue.html" style="color:var(--primary);font-weight:700">browse the catalogue</a>
+          to start a new one.
+        </p>
+      </div>
+    </div>
+
+    <div class="hide" id="chatPane" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+      <header class="chat-head">
+        <img class="avatar avatar-sm" id="headPhoto" src="" alt="" />
+        <div class="grow">
+          <div class="chat-head-name">
+            <span id="headName">Partner</span>
+            <span class="badge badge-ai" id="headTag">AI companion</span>
+          </div>
+          <div class="chat-head-status">
+            <span class="dot-online" style="display:inline-block;vertical-align:middle;margin-right:5px"></span>
+            <span id="headStatus">Online now</span>
+          </div>
+        </div>
+        <div class="row gap-2">
+          <button class="btn-icon" type="button" id="resetBtn" title="Clear this conversation">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.7 9.7 0 0 0-6.34 2.41"/><path d="M3 3l6 6"/></svg>
+          </button>
+          <a class="btn btn-outline btn-sm" id="headUnlockLink" href="catalogue.html">View profile</a>
+        </div>
+      </header>
+
+      <div class="chat-body" id="chatBody"></div>
+
+      <footer class="chat-foot">
+        <div class="quick-replies" id="quickReplies"></div>
+        <div class="chat-input-row">
+          <textarea class="input" id="messageInput" rows="1" placeholder="Write a message\u2026" style="max-height:130px"></textarea>
+          <button class="chat-send" type="button" id="sendBtn" aria-label="Send message">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>
+          </button>
+        </div>
+        <p class="chat-notice" id="chatNotice">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <span id="noticeText"></span>
+        </p>
+      </footer>
+    </div>
+  </section>
+
+</main>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+  App.requireAuth(true);
+  App.boot('chat.html');
+
+  var profile = App.profile();
+  var activeId = new URLSearchParams(location.search).get('with');
+  var search = '';
+  var busy = false;
+
+  var bodyEl    = document.getElementById('chatBody');
+  var listEl    = document.getElementById('chatList');
+  var inputEl   = document.getElementById('messageInput');
+  var sendBtn   = document.getElementById('sendBtn');
+
+  /* ---------- Sidebar ---------- */
+  function renderList() {
+    var partners = App.chatPartners()
+      .filter(function (p) {
+        if (!search) return true;
+        return p.name.toLowerCase().indexOf(search.toLowerCase()) !== -1;
+      })
+      .sort(function (a, b) {
+        var la = App.lastMessage(a.id);
+        var lb = App.lastMessage(b.id);
+        return (lb ? lb.at : 0) - (la ? la.at : 0);
+      });
+
+    document.getElementById('chatCount').textContent = App.chatPartners().length + ' unlocked';
+
+    if (!partners.length) {
+      listEl.innerHTML =
+        '<div class="chat-list-empty">' +
+          '<div style="font-size:2rem;margin-bottom:8px">&#128274;</div>' +
+          '<p>No unlocked partners yet.</p>' +
+          '<a class="btn btn-primary btn-sm mt-4" href="catalogue.html">Browse catalogue</a>' +
+        '</div>';
+      return;
+    }
+
+    listEl.innerHTML = partners.map(function (p) {
+      var last = App.lastMessage(p.id);
+      var unread = App.unread(p.id);
+      var preview = last ? last.content : p.tags.slice(0, 2).join(' \u00B7 ');
+      var who = last ? (last.isBot ? p.name : 'You') : 'No messages yet';
+      var ring = p.tier === 'Elite' ? 'avatar-ring avatar-ring-elite' : 'avatar-ring';
+
+      return '<button class="chat-list-item' + (p.id === activeId ? ' is-active' : '') + '" type="button" data-open="' + p.id + '">' +
+        '<div class="' + ring + '"><img class="avatar avatar-sm" src="' + App.img(p, 100) + '" alt="" /></div>' +
+        '<div class="chat-list-body">' +
+          '<div class="chat-list-top">' +
+            '<span class="chat-list-name">' + App.esc(p.name) + '</span>' +
+            (last ? '<span class="chat-list-time">' + App.timeAgo(last.at) + '</span>' : '') +
+          '</div>' +
+          '<div class="chat-list-preview">' + App.esc(who + ': ' + preview) + '</div>' +
+        '</div>' +
+        (unread ? '<span class="bell-count" style="position:static">' + unread + '</span>' : '') +
+      '</button>';
+    }).join('');
+  }
+
+  document.getElementById('chatSearch').addEventListener('input', function () {
+    search = this.value.trim();
+    renderList();
+  });
+
+  listEl.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-open]');
+    if (!btn) return;
+    openChat(btn.getAttribute('data-open'));
+  });
+
+  /* ---------- Conversation pane ---------- */
+  function openChat(id) {
+    var p = App.data.partnerById(id);
+    if (!p) return;
+    activeId = id;
+
+    document.getElementById('emptyPane').classList.add('hide');
+    var pane = document.getElementById('chatPane');
+    pane.classList.remove('hide');
+    pane.style.display = 'flex';
+
+    document.getElementById('headPhoto').src = App.img(p, 200);
+    document.getElementById('headName').textContent = p.name;
+    document.getElementById('headTag').textContent = p.isBot ? 'AI companion' : 'Verified member';
+    document.getElementById('headTag').className = p.isBot ? 'badge badge-ai' : 'badge badge-human';
+    document.getElementById('headStatus').textContent = p.isBot ? 'Always online \u00B7 replies instantly' : 'Online now';
+    document.getElementById('headUnlockLink').href = 'profile.html?view=' + p.id;
+
+    document.getElementById('noticeText').textContent = p.isBot
+      ? 'This is an AI companion (' + (profile.gender === 'Man' ? 'female' : 'male') + ' persona). Flip profiles.is_bot to false when real members join.'
+      : 'You are chatting with a real member. Messages are end-to-end private.';
+
+    renderQuickReplies(p);
+    renderMessages();
+    renderList();
+    inputEl.focus();
+  }
+
+  function renderQuickReplies(p) {
+    var wrap = document.getElementById('quickReplies');
+    wrap.innerHTML = (p.prompts || []).map(function (text) {
+      return '<button class="quick-reply" type="button" data-quick="' + App.esc(text) + '">' + App.esc(text) + '</button>';
+    }).join('');
+  }
+
+  document.getElementById('quickReplies').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-quick]');
+    if (!btn) return;
+    inputEl.value = btn.getAttribute('data-quick');
+    autoGrow();
+    inputEl.focus();
+  });
+
+  function renderMessages() {
+    if (!activeId) return;
+    var p = App.data.partnerById(activeId);
+    var list = App.messages(activeId);
+    var myId = 'me';
+
+    if (!list.length) {
+      bodyEl.innerHTML =
+        '<div class="empty" style="height:100%">' +
+          '<img class="avatar avatar-lg" src="' + App.img(p, 200) + '" alt="" />' +
+          '<div class="empty-title">Say hello to ' + App.esc(p.name) + '</div>' +
+          '<div class="empty-text">A simple opener works best. ' +
+            (p.isBot ? 'Their reply is instant and matched to your profile.' : 'They will see your message right away.') +
+          '</div>' +
+        '</div>';
+      return;
+    }
+
+    var html = '';
+    var lastDay = '';
+    list.forEach(function (m, i) {
+      var day = App.dayLabel(m.at);
+      if (day !== lastDay) {
+        html += '<div class="chat-date">' + day + '</div>';
+        lastDay = day;
+      }
+      var mine = !m.isBot;
+      var prev = list[i - 1];
+      var grouped = prev && prev.isBot === m.isBot && prev && App.dayLabel(prev.at) === day;
+
+      html += '<div class="msg-row' + (mine ? ' is-out' : '') + (grouped ? '' : ' is-first') + '">' +
+        (!mine && !grouped
+          ? '<img class="avatar avatar-xs" src="' + App.img(p, 60) + '" alt="" style="align-self:flex-end" />'
+          : '<span style="width:32px;flex-shrink:0"></span>') +
+        '<div class="bubble ' + (mine ? 'bubble-out' : 'bubble-in') + '">' +
+          (!mine && !grouped && p.isBot
+            ? '<div class="msg-author" style="color:var(--indigo-600)">' + App.esc(p.name) + ' \u00B7 AI</div>'
+            : '') +
+          '<div>' + App.esc(m.content) + '</div>' +
+          '<div class="bubble-meta">' + App.clock(m.at) + '</div>' +
+        '</div>' +
+      '</div>';
+    });
+
+    bodyEl.innerHTML = html;
+    bodyEl.scrollTop = bodyEl.scrollHeight;
+  }
+
+  /* ---------- Send message + AI reply ---------- */
+  function send() {
+    if (busy || !activeId) return;
+    var text = inputEl.value.trim();
+    if (!text) return;
+
+    var p = App.data.partnerById(activeId);
+    var count = App.messages(activeId).length;
+
+    App.send(activeId, { from: 'me', content: text, isBot: false });
+    inputEl.value = '';
+    autoGrow();
+    sendBtn.disabled = true;
+    busy = true;
+    renderMessages();
+    renderList();
+
+    // Generate the AI reply using gender-swapped routing
+    var reply = App.data.reply(text, profile.gender, p, count);
+
+    setTimeout(function () {
+      App.send(activeId, { from: p.id, content: reply.content, isBot: true });
+      busy = false;
+      sendBtn.disabled = false;
+      renderMessages();
+      renderList();
+      inputEl.focus();
+    }, reply.delay);
+  }
+
+  sendBtn.addEventListener('click', send);
+
+  inputEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+
+  inputEl.addEventListener('input', autoGrow);
+
+  function autoGrow() {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 130) + 'px';
+  }
+
+  document.getElementById('resetBtn').addEventListener('click', function () {
+    if (!activeId) return;
+    var p = App.data.partnerById(activeId);
+    App.modal(
+      '<div class="modal-head"><h3>Clear conversation</h3>' +
+        '<button class="modal-close" type="button" data-close aria-label="Close">&times;</button></div>' +
+      '<div class="modal-body">' +
+        '<p>This removes every message with ' + App.esc(p.name) + '. Your unlock stays active.</p>' +
+        '<div class="modal-foot">' +
+          '<button class="btn btn-ghost" type="button" data-close>Cancel</button>' +
+          '<button class="btn btn-primary" type="button" id="confirmReset">Clear messages</button>' +
+        '</div>' +
+      '</div>',
+      {
+        onMount: function (root) {
+          root.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', App.closeModal); });
+          root.querySelector('#confirmReset').addEventListener('click', function () {
+            App.resetChat(activeId);
+            App.closeModal();
+            renderMessages();
+            renderList();
+            App.toast('Conversation cleared', null, 'info', 2200);
+          });
+        }
+      }
+    );
+  });
+
+  /* ---------- Boot ---------- */
+  renderList();
+  if (!App.chatPartners().length) {
+    listEl.innerHTML =
+      '<div class="chat-list-empty">' +
+        '<div style="font-size:2rem;margin-bottom:8px">&#128274;</div>' +
+        '<p>Nothing unlocked yet.</p>' +
+        '<a class="btn btn-primary btn-sm mt-4" href="catalogue.html">Browse catalogue</a>' +
+      '</div>';
+  }
+  if (activeId && App.isUnlocked(activeId)) openChat(activeId);
+</script>
+</body>
+</html>

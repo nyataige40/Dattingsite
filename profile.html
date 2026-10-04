@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>My profile — Dattingsite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<header class="nav" data-navbar></header>
+
+<main class="page">
+  <div class="container">
+
+    <div class="dash-head">
+      <div>
+        <span class="eyebrow">Account</span>
+        <h1 class="dash-title">My profile</h1>
+        <p class="muted mt-2">This is what other members see. Keep it fresh and you will get better matches.</p>
+      </div>
+      <button class="btn btn-outline btn-sm" type="button" id="logoutBtn">Log out</button>
+    </div>
+
+    <div class="profile-layout">
+
+      <!-- ============ Sticky summary ============ -->
+      <aside class="profile-card">
+        <div class="avatar-wrap avatar-xl">
+          <img id="sumPhoto" class="avatar" src="" alt="" />
+          <button class="avatar-edit" type="button" id="shufflePhoto" title="Change photo">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+          </button>
+        </div>
+
+        <div class="profile-name" id="sumName">Your name</div>
+        <div class="profile-meta" id="sumMeta">&mdash;</div>
+
+        <div class="chips mt-4" id="sumTags" style="justify-content:center"></div>
+
+        <div class="profile-completion">
+          <div class="between mb-2">
+            <span class="small strong">Profile strength</span>
+            <span class="small" id="sumPct" style="color:var(--primary);font-weight:800">0%</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" id="sumBar" style="width:0%"></div></div>
+          <p class="hint mt-3" id="sumHint"></p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="between small">
+          <span class="muted">Wallet balance</span>
+          <span class="strong" id="sumBalance">$0.00</span>
+        </div>
+        <div class="between small mt-3">
+          <span class="muted">Unlocked chats</span>
+          <span class="strong" id="sumUnlocked">0</span>
+        </div>
+
+        <button class="btn btn-primary btn-block mt-6" type="button" id="sumTopUp">Add funds</button>
+      </aside>
+
+      <!-- ============ Editor ============ -->
+      <section>
+        <form class="card" id="profileForm" novalidate>
+
+          <div class="between mb-5">
+            <h2 style="font-size:1.15rem">Basics</h2>
+            <span class="small muted">Required fields are marked *</span>
+          </div>
+
+          <div class="grid grid-2">
+            <div class="field">
+              <label class="label" for="fName">Display name *</label>
+              <input class="input" id="fName" name="name" type="text" placeholder="How should people call you?" autocomplete="name" />
+              <span class="error-text hide" data-error-for="name"></span>
+            </div>
+            <div class="field">
+              <label class="label" for="fAge">Age *</label>
+              <input class="input" id="fAge" name="age" type="number" min="18" max="99" placeholder="28" />
+              <span class="error-text hide" data-error-for="age"></span>
+            </div>
+          </div>
+
+          <div class="field mt-5">
+            <span class="label">I am a *</span>
+            <div class="tiles" id="genderTiles">
+              <label class="tile" data-gender="Woman">
+                <input type="radio" name="gender" value="Woman" class="sr-only" />
+                <span class="tile-icon">&#128105;</span>
+                <span class="tile-title">Woman</span>
+                <span class="tile-sub">Meet men</span>
+                <span class="tile-check">&#10003;</span>
+              </label>
+              <label class="tile" data-gender="Man">
+                <input type="radio" name="gender" value="Man" class="sr-only" />
+                <span class="tile-icon">&#128102;</span>
+                <span class="tile-title">Man</span>
+                <span class="tile-sub">Meet women</span>
+                <span class="tile-check">&#10003;</span>
+              </label>
+              <label class="tile" data-gender="Non-binary">
+                <input type="radio" name="gender" value="Non-binary" class="sr-only" />
+                <span class="tile-icon">&#129309;</span>
+                <span class="tile-title">Non-binary</span>
+                <span class="tile-sub">Everyone welcome</span>
+                <span class="tile-check">&#10003;</span>
+              </label>
+            </div>
+            <p class="hint">You will see members of every gender, with the matching AI persona prioritised.</p>
+          </div>
+
+          <div class="field mt-5">
+            <label class="label" for="fCity">City *</label>
+            <div class="input-wrap">
+              <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <input class="input has-icon" id="fCity" name="city" type="text" placeholder="San Francisco, CA" />
+            </div>
+            <span class="error-text hide" data-error-for="city"></span>
+          </div>
+
+          <div class="field mt-5">
+            <label class="label" for="fBio">About you *</label>
+            <textarea class="input" id="fBio" name="bio" rows="4" placeholder="A couple of lines about you, what you enjoy, and what you are looking for."></textarea>
+            <div class="between">
+              <span class="error-text hide" data-error-for="bio"></span>
+              <span class="hint ml-auto" id="bioCount">0 / 400</span>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="between mb-5">
+            <h2 style="font-size:1.15rem">Interests</h2>
+            <span class="small muted"><span id="intCount">0</span> selected &middot; pick at least 3</span>
+          </div>
+          <div class="chips" id="interestChips"></div>
+
+          <div class="divider"></div>
+
+          <div class="between">
+            <div class="row gap-2">
+              <button class="btn btn-primary" type="submit" id="saveBtn">Save changes</button>
+              <button class="btn btn-ghost" type="button" id="resetBtn">Reset</button>
+            </div>
+            <span class="small muted" id="savedHint"></span>
+          </div>
+        </form>
+
+        <!-- Unlocked partners overview -->
+        <div class="card mt-6">
+          <div class="between mb-5">
+            <h2 style="font-size:1.15rem">Your unlocked partners</h2>
+            <a class="btn btn-outline btn-sm" href="catalogue.html">Browse more</a>
+          </div>
+          <div id="unlockedList" class="grid grid-3"></div>
+        </div>
+
+        <!-- Danger zone -->
+        <div class="card mt-6">
+          <h2 style="font-size:1.15rem">Demo data</h2>
+          <p class="hint mt-2">
+            This build stores everything in your browser's LocalStorage. Clearing it resets the account,
+            wallet, unlocks and all conversations.
+          </p>
+          <button class="btn btn-outline btn-sm mt-4" type="button" id="wipeBtn">Reset all local data</button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+  App.requireAuth(true);
+  App.boot('profile.html');
+
+  var form = document.getElementById('profileForm');
+  var profile = App.profile();
+  var PHOTOS = ['https://i.pravatar.cc/400?img=12','https://i.pravatar.cc/400?img=32','https://i.pravatar.cc/400?img=47','https://i.pravatar.cc/400?img=5','https://i.pravatar.cc/400?img=15','https://i.pravatar.cc/400?img=25'];
+
+  /* ---------- Sidebar summary ---------- */
+  function renderSummary() {
+    profile = App.profile();
+    var pct = App.completion();
+
+    document.getElementById('sumPhoto').src = profile.photo;
+    document.getElementById('sumName').textContent = profile.name || 'Your name';
+    document.getElementById('sumMeta').textContent =
+      [profile.age ? profile.age + ' yrs' : null, profile.gender, profile.city].filter(Boolean).join(' \u00B7 ') || 'Not set yet';
+
+    document.getElementById('sumTags').innerHTML = (profile.interests || [])
+      .slice(0, 4)
+      .map(function (i) { return '<span class="tag tag-rose">' + App.esc(i) + '</span>'; }).join('');
+
+    document.getElementById('sumPct').textContent = pct + '%';
+    document.getElementById('sumBar').style.width = pct + '%';
+    document.getElementById('sumHint').textContent = pct >= 100
+      ? 'Your profile is complete. Nice work.'
+      : 'Add a photo, a longer bio and three interests to reach 100%.';
+
+    document.getElementById('sumBalance').textContent = App.money(App.balance());
+    document.getElementById('sumUnlocked').textContent = App.state().unlocked.length;
+
+    renderUnlocked();
+  }
+
+  function renderUnlocked() {
+    var wrap = document.getElementById('unlockedList');
+    var ids = App.state().unlocked;
+
+    if (!ids.length) {
+      wrap.innerHTML =
+        '<div class="empty" style="grid-column:1/-1;padding:var(--s-8) var(--s-4)">' +
+          '<div class="empty-icon">&#128274;</div>' +
+          '<div class="empty-title">No partners unlocked yet</div>' +
+          '<div class="empty-text">Unlock someone in the catalogue to start a conversation.</div>' +
+        '</div>';
+      return;
+    }
+
+    wrap.innerHTML = ids.map(function (id) {
+      var p = App.data.partnerById(id);
+      if (!p) return '';
+      var last = App.lastMessage(id);
+      return '<a class="card card-tight card-hover" href="chat.html?with=' + p.id + '" style="text-decoration:none;display:block">' +
+        '<div class="row gap-3">' +
+          '<img class="avatar avatar-sm" src="' + App.img(p, 100) + '" alt="" />' +
+          '<div class="grow" style="min-width:0">' +
+            '<div class="small strong ellipsis">' + App.esc(p.name) + '</div>' +
+            '<div class="tiny muted ellipsis">' + (last ? App.timeAgo(last.at) : 'No messages yet') + '</div>' +
+          '</div>' +
+          '<span class="' + App.tierClass(p.tier) + '">' + p.tier + '</span>' +
+        '</div>' +
+      '</a>';
+    }).join('');
+  }
+
+  /* ---------- Interest chips ---------- */
+  function renderChips() {
+    var picked = (App.profile().interests || []).slice();
+    // Keep any stored interest that is no longer in the master list, so saving
+    // the form never silently drops something the member already chose.
+    var all = App.INTERESTS.slice();
+    picked.forEach(function (i) { if (all.indexOf(i) === -1) all.push(i); });
+
+    document.getElementById('interestChips').innerHTML = all.map(function (name) {
+      return '<button class="chip' + (picked.indexOf(name) !== -1 ? ' is-active' : '') + '" type="button" data-interest="' + App.esc(name) + '">' + App.esc(name) + '</button>';
+    }).join('');
+    document.getElementById('intCount').textContent = picked.length;
+  }
+
+  document.getElementById('interestChips').addEventListener('click', function (e) {
+    var chip = e.target.closest('[data-interest]');
+    if (!chip) return;
+    chip.classList.toggle('is-active');
+    document.getElementById('intCount').textContent =
+      this.querySelectorAll('.chip.is-active').length;
+  });
+
+  /* ---------- Gender tiles ---------- */
+  function syncTiles() {
+    document.querySelectorAll('#genderTiles .tile').forEach(function (tile) {
+      tile.classList.toggle('is-active', tile.getAttribute('data-gender') === profile.gender);
+    });
+  }
+
+  document.getElementById('genderTiles').addEventListener('click', function (e) {
+    var tile = e.target.closest('[data-gender]');
+    if (!tile) return;
+    profile.gender = tile.getAttribute('data-gender');
+    syncTiles();
+  });
+
+  /* ---------- Fill / reset form ---------- */
+  function fill() {
+    profile = App.profile();
+    document.getElementById('fName').value = profile.name || '';
+    document.getElementById('fAge').value = profile.age || '';
+    document.getElementById('fCity').value = profile.city || '';
+    document.getElementById('fBio').value = profile.bio || '';
+    document.getElementById('bioCount').textContent = (profile.bio || '').length + ' / 400';
+    syncTiles();
+    renderChips();
+    renderSummary();
+    clearErrors();
+  }
+
+  document.getElementById('fBio').addEventListener('input', function () {
+    document.getElementById('bioCount').textContent = this.value.length + ' / 400';
+  });
+
+  function clearErrors() {
+    document.querySelectorAll('[data-error-for]').forEach(function (el) {
+      el.textContent = '';
+      el.classList.add('hide');
+    });
+    document.querySelectorAll('.input').forEach(function (i) { i.classList.remove('is-invalid'); });
+  }
+
+  function setError(field, message) {
+    var el = document.querySelector('[data-error-for="' + field + '"]');
+    if (el) {
+      el.textContent = message;
+      el.classList.remove('hide');
+    }
+    var input = form.querySelector('[name="' + field + '"]');
+    if (input) input.classList.add('is-invalid');
+  }
+
+  /* ---------- Save ---------- */
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    clearErrors();
+
+    var data = {
+      name: document.getElementById('fName').value.trim(),
+      age: document.getElementById('fAge').value,
+      gender: profile.gender,
+      city: document.getElementById('fCity').value.trim(),
+      bio: document.getElementById('fBio').value.trim(),
+      photo: profile.photo,
+      interests: Array.prototype.map.call(
+        document.querySelectorAll('#interestChips .chip.is-active'),
+        function (c) { return c.getAttribute('data-interest'); }
+      )
+    };
+
+    var ok = true;
+    if (data.name.length < 2) { setError('name', 'Enter at least 2 characters.'); ok = false; }
+
+    var age = parseInt(data.age, 10);
+    if (!age || age < 18 || age > 99) { setError('age', 'You must be between 18 and 99.'); ok = false; }
+
+    if (data.city.length < 2) { setError('city', 'Tell us where you are based.'); ok = false; }
+    if (data.bio.length < 25) { setError('bio', 'Write at least 25 characters so people get a feel for you.'); ok = false; }
+
+    if (!ok) {
+      App.toast('Check your details', 'Some fields still need attention.', 'error');
+      return;
+    }
+
+    var btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Saving';
+
+    setTimeout(function () {
+      App.updateProfile({
+        name: data.name,
+        age: age,
+        gender: data.gender,
+        city: data.city,
+        bio: data.bio,
+        interests: data.interests
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Save changes';
+      document.getElementById('savedHint').textContent = 'Saved just now';
+      renderSummary();
+      App.toast('Profile updated', 'Your matches will refresh with the new details.', 'success');
+      setTimeout(function () { document.getElementById('savedHint').textContent = ''; }, 4000);
+    }, 600);
+  });
+
+  /* ---------- Misc actions ---------- */
+  document.getElementById('shufflePhoto').addEventListener('click', function () {
+    var next = PHOTOS[(PHOTOS.indexOf(profile.photo) + 1) % PHOTOS.length];
+    App.updateProfile({ photo: next });
+    profile = App.profile();
+    document.getElementById('sumPhoto').src = next;
+    document.getElementById('sumPhoto').style.animation = 'none';
+    void document.getElementById('sumPhoto').offsetWidth;
+    document.getElementById('sumPhoto').style.animation = '';
+    App.toast('Photo updated', null, 'info', 1800);
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', fill);
+  document.getElementById('sumTopUp').addEventListener('click', function () { App.openTopUp(); });
+
+  document.getElementById('logoutBtn').addEventListener('click', function () {
+    App.modal(
+      '<div class="modal-head"><h3>Log out?</h3>' +
+        '<button class="modal-close" type="button" data-close aria-label="Close">&times;</button></div>' +
+      '<div class="modal-body">' +
+        '<p>Your profile, unlocks and conversations stay on this device.</p>' +
+        '<div class="modal-foot">' +
+          '<button class="btn btn-ghost" type="button" data-close>Stay</button>' +
+          '<button class="btn btn-primary" type="button" id="confirmLogout">Log out</button>' +
+        '</div>' +
+      '</div>',
+      {
+        onMount: function (root) {
+          root.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', App.closeModal); });
+          root.querySelector('#confirmLogout').addEventListener('click', function () {
+            App.logout();
+            location.href = 'login.html';
+          });
+        }
+      }
+    );
+  });
+
+  document.getElementById('wipeBtn').addEventListener('click', function () {
+    App.modal(
+      '<div class="modal-head"><h3>Reset all local data</h3>' +
+        '<button class="modal-close" type="button" data-close aria-label="Close">&times;</button></div>' +
+      '<div class="modal-body">' +
+        '<p>This permanently clears your account, wallet, unlocks and every message stored in this browser.</p>' +
+        '<div class="modal-foot">' +
+          '<button class="btn btn-ghost" type="button" data-close>Cancel</button>' +
+          '<button class="btn btn-primary" type="button" id="confirmWipe">Yes, erase everything</button>' +
+        '</div>' +
+      '</div>',
+      {
+        onMount: function (root) {
+          root.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', App.closeModal); });
+          root.querySelector('#confirmWipe').addEventListener('click', function () {
+            App.reset();
+            location.href = 'index.html';
+          });
+        }
+      }
+    );
+  });
+
+  /* Keep the summary honest if the store changes elsewhere */
+  App.onChange(function () {
+    var unlocked = App.state().unlocked.length;
+    if (document.getElementById('sumUnlocked').textContent != String(unlocked)) renderSummary();
+  });
+
+  fill();
+</script>
+</body>
+</html>

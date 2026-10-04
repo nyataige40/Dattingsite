@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wallet &amp; transactions — Dattingsite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<header class="nav" data-navbar></header>
+
+<main class="page">
+  <div class="container">
+
+    <div class="dash-head">
+      <div>
+        <span class="eyebrow">Billing</span>
+        <h1 class="dash-title">Wallet &amp; transactions</h1>
+        <p class="muted mt-2">Every unlock is a one-time payment. No subscriptions, no renewals.</p>
+      </div>
+      <button class="btn btn-primary btn-sm" type="button" id="topUpBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Add funds
+      </button>
+    </div>
+
+    <!-- ============ Balance + summary ============ -->
+    <div class="tx-summary">
+      <article class="card" style="background:var(--grad-rose);border:0;color:#fff">
+        <div class="small" style="opacity:.9">Available balance</div>
+        <div class="stat-num" id="balance" style="font-size:2.4rem;color:#fff">$0.00</div>
+        <button class="btn btn-ghost-light btn-sm mt-4" type="button" id="balanceTopUp">Add funds</button>
+      </article>
+
+      <article class="card">
+        <div class="small muted">Total spent</div>
+        <div class="stat-num" id="totalSpent" style="font-size:2.4rem">$0.00</div>
+        <div class="small muted mt-3" id="spentCount">0 unlocks</div>
+      </article>
+
+      <article class="card">
+        <div class="small muted">Partner value unlocked</div>
+        <div class="stat-num" id="unlockCount" style="font-size:2.4rem">0</div>
+        <a class="btn btn-outline btn-sm mt-4" href="catalogue.html">Browse catalogue</a>
+      </article>
+    </div>
+
+    <!-- ============ Spend by tier ============ -->
+    <article class="card mb-6">
+      <h2 style="font-size:1.1rem">Spend by tier</h2>
+      <div class="stack mt-5" id="tierBars"></div>
+    </article>
+
+    <!-- ============ History ============ -->
+    <div class="between mb-5">
+      <h2 style="font-size:1.25rem">Transaction history</h2>
+      <div class="row gap-2">
+        <div class="segmented" id="txFilter">
+          <button class="segmented-btn is-active" type="button" data-filter="all">All</button>
+          <button class="segmented-btn" type="button" data-filter="unlock">Unlocks</button>
+          <button class="segmented-btn" type="button" data-filter="topup">Top-ups</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack gap-3" id="txList"></div>
+
+    <div id="emptyState" class="hide">
+      <div class="empty">
+        <div class="empty-icon">&#129534;</div>
+        <div class="empty-title">No transactions yet</div>
+        <div class="empty-text">When you unlock a partner or top up your wallet, the payment will appear here with a receipt reference.</div>
+      </div>
+    </div>
+
+    <!-- ============ Pricing recap ============ -->
+    <div class="grid grid-3 mt-8" id="pricingRecap"></div>
+
+  </div>
+</main>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+  App.requireAuth(true);
+  App.boot('transactions.html');
+
+  var filter = 'all';
+
+  var METHOD_LABEL = { wallet: 'Wallet', stripe: 'Stripe', paypal: 'PayPal' };
+
+  function txType(tx) {
+    return tx.partnerId ? 'unlock' : 'topup';
+  }
+
+  /* ---------- Summary ---------- */
+  function renderSummary() {
+    var txs = App.transactions();
+    var unlocks = txs.filter(function (t) { return txType(t) === 'unlock'; });
+    var topups = txs.filter(function (t) { return txType(t) === 'topup'; });
+    var spent = unlocks.reduce(function (s, t) { return s + (t.amount || 0); }, 0);
+    var added = topups.reduce(function (s, t) { return s + (t.amount || 0); }, 0);
+
+    document.getElementById('balance').textContent = App.money(App.balance());
+    document.getElementById('totalSpent').textContent = App.money(spent);
+    document.getElementById('spentCount').textContent =
+      unlocks.length + (unlocks.length === 1 ? ' unlock' : ' unlocks') +
+      (added ? ' \u00B7 ' + App.money(added) + ' added' : '');
+    document.getElementById('unlockCount').textContent = App.state().unlocked.length;
+  }
+
+  /* ---------- Tier bars ---------- */
+  function renderTierBars() {
+    var txs = App.transactions().filter(function (t) { return txType(t) === 'unlock'; });
+    var totals = { Standard: 0, Premium: 0, Elite: 0 };
+    var counts = { Standard: 0, Premium: 0, Elite: 0 };
+
+    txs.forEach(function (t) {
+      if (!totals[t.tier] && totals[t.tier] !== 0) return;
+      totals[t.tier] += t.amount || 0;
+      counts[t.tier] += 1;
+    });
+
+    var max = Math.max.apply(null, ['Standard', 'Premium', 'Elite'].map(function (k) { return totals[k]; }).concat([1]));
+
+    document.getElementById('tierBars').innerHTML = ['Standard', 'Premium', 'Elite'].map(function (tier) {
+      var pct = Math.round((totals[tier] / max) * 100);
+      return '<div>' +
+        '<div class="between small mb-2">' +
+          '<span class="row gap-2">' + App.tierClass(tier) + '<span class="muted">' + counts[tier] + ' paid</span></span>' +
+          '<span class="strong">' + App.money(totals[tier]) + '</span>' +
+        '</div>' +
+        '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
+      '</div>';
+    }).join('');
+  }
+
+  /* ---------- Transaction list ---------- */
+  function renderList() {
+    var txs = App.transactions().filter(function (t) {
+      return filter === 'all' || txType(t) === filter;
+    });
+
+    var list = document.getElementById('txList');
+    if (!txs.length) {
+      list.innerHTML = '';
+      document.getElementById('emptyState').classList.remove('hide');
+      return;
+    }
+    document.getElementById('emptyState').classList.add('hide');
+
+    list.innerHTML = txs.map(function (t) {
+      var isUnlock = txType(t) === 'unlock';
+      var icon = isUnlock ? '&#128274;' : '&#128176;';
+      var iconBg = isUnlock ? '' : 'style="background:var(--success-soft,rgba(22,163,74,.1));border-color:rgba(22,163,74,.2)"';
+      var title = isUnlock
+        ? 'Unlocked ' + App.esc(t.partnerName || 'partner')
+        : 'Wallet top-up';
+
+      return '<article class="tx-row">' +
+        '<div class="tx-icon" ' + iconBg + '>' + icon + '</div>' +
+        '<div class="tx-body">' +
+          '<div class="tx-name">' + title + '</div>' +
+          '<div class="tx-meta">' +
+            App.timeAgo(t.at) + ' \u00B7 ' + (METHOD_LABEL[t.method] || t.method) +
+            (t.tier ? ' \u00B7 ' + t.tier + ' tier' : '') +
+          '</div>' +
+          '<div class="tx-ref">' + App.esc(t.ref) + '</div>' +
+        '</div>' +
+        '<div class="stack" style="align-items:flex-end;gap:var(--s-2)">' +
+          '<span class="tx-amount" style="color:' + (isUnlock ? 'var(--text)' : 'var(--success)') + '">' +
+            (isUnlock ? '\u2212' : '+') + App.money(t.amount) + '</span>' +
+          '<span class="badge badge-soft">' + App.esc(t.status || 'completed') + '</span>' +
+        '</div>' +
+        (isUnlock
+          ? '<a class="btn btn-outline btn-sm" href="chat.html?with=' + t.partnerId + '">Chat</a>'
+          : '<a class="btn btn-outline btn-sm" href="catalogue.html">Spend it</a>') +
+      '</article>';
+    }).join('');
+  }
+
+  /* ---------- Pricing recap ---------- */
+  function renderPricing() {
+    document.getElementById('pricingRecap').innerHTML = Object.keys(App.data.TIERS).map(function (name) {
+      var info = App.data.getTierInfo(name);
+      var count = App.data.partnersFor(App.profile().gender).filter(function (p) { return p.tier === name; }).length;
+
+      return '<article class="tier-card' + (name === 'Premium' ? ' is-featured' : '') + '" style="padding:var(--s-6)">' +
+        (name === 'Premium' ? '<span class="tier-flag">Most popular</span>' : '') +
+        '<div class="between">' +
+          '<span class="' + App.tierClass(name) + '">' + name + '</span>' +
+          '<span class="tiny muted">' + count + ' partners</span>' +
+        '</div>' +
+        '<div class="tier-price" style="font-size:1.9rem"><sup>$</sup>' + info.price.toFixed(2) + '</div>' +
+        '<p class="tier-note">' + info.note + '</p>' +
+      '</article>';
+    }).join('');
+  }
+
+  /* ---------- Filters ---------- */
+  document.getElementById('txFilter').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-filter]');
+    if (!btn) return;
+    filter = btn.getAttribute('data-filter');
+    this.querySelectorAll('.segmented-btn').forEach(function (b) { b.classList.remove('is-active'); });
+    btn.classList.add('is-active');
+    renderList();
+  });
+
+  document.getElementById('topUpBtn').addEventListener('click', function () { App.openTopUp(); });
+  document.getElementById('balanceTopUp').addEventListener('click', function () { App.openTopUp(); });
+
+  /* ---------- Boot ---------- */
+  function renderAll() {
+    renderSummary();
+    renderTierBars();
+    renderList();
+  }
+
+  renderPricing();
+  renderAll();
+
+  App.onChange(renderAll);
+</script>
+</body>
+</html>
