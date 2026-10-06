@@ -11,6 +11,8 @@ import profileRoutes from './routes/profileRoutes.js';
 import catalogueRoutes from './routes/catalogueRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import monetizationRoutes from './routes/monetizationRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 // Middleware
 import { authenticate } from './middleware/authMiddleware.js';
@@ -63,6 +65,13 @@ app.use('/api/profile', authenticate, profileRoutes);
 app.use('/api/catalogue', authenticate, catalogueRoutes);
 app.use('/api/chat', authenticate, chatRoutes);
 app.use('/api/notifications', authenticate, notificationRoutes);
+
+// Layer 4: monetization (subscriptions, boosts, super likes)
+// Plans and pricing stay public so marketing pages can render them signed out;
+// their per-route middleware still enforces auth where it matters.
+app.use('/api/billing', monetizationRoutes);
+// Layer 4: admin console (analytics, moderation, tickets)
+app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use((req, res) => {

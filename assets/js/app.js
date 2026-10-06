@@ -20,7 +20,12 @@
     unlocked: [],
     transactions: [],
     messages: {},
-    notifications: []
+    notifications: [],
+    subscription: null,
+    boosts: [],
+    superLikesSent: [],
+    superLikesReceived: [],
+    admin: null
   };
 
   function deepClone(value) {
@@ -69,6 +74,7 @@
       email: DEMO_EMAIL,
       password: hash(DEMO_PASSWORD),
       provider: 'email',
+      isAdmin: true,
       createdAt: Date.now()
     });
     persist();
@@ -157,7 +163,7 @@
   }
 
   function publicUser(user) {
-    return { id: user.id, name: user.name, email: user.email, provider: user.provider };
+    return { id: user.id, name: user.name, email: user.email, provider: user.provider, isAdmin: !!user.isAdmin };
   }
 
   function startSession(user) {
@@ -420,6 +426,19 @@
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
+  /* Countdown label for a future timestamp; timeAgo() would report "now". */
+  function timeUntil(ts) {
+    var diff = ts - Date.now();
+    if (diff <= 0) return 'ended';
+    var min = Math.floor(diff / 60000);
+    if (min < 1) return 'under a minute';
+    if (min < 60) return 'in ' + min + 'm';
+    var hr = Math.floor(min / 60);
+    if (hr < 24) return 'in ' + hr + 'h';
+    var d = Math.floor(hr / 24);
+    return 'in ' + d + 'd';
+  }
+
   function clockTime(ts) {
     return new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   }
@@ -439,6 +458,9 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
+
+  /* Short alias used inside the modal template literals */
+  function esc(str) { return escapeHtml(str); }
 
   function partnerImage(partner, size) {
     var url = partner.photo;
@@ -497,7 +519,7 @@
     var config = opts || {};
     var backdrop = document.createElement('div');
     backdrop.className = 'modal-backdrop';
-    backdrop.innerHTML = '<div class="modal' + (config.wide ? ' modal-wide' : '') + '" role="dialog" aria-modal="true">' + html + '</div>';
+    backdrop.innerHTML = '<div class="modal' + (config.xwide ? ' modal-xwide' : (config.wide ? ' modal-wide' : '')) + '" role="dialog" aria-modal="true">' + html + '</div>';
 
     backdrop.addEventListener('mousedown', function (e) {
       if (e.target === backdrop && config.dismissible !== false) closeModal();
@@ -562,6 +584,7 @@
       { href: 'transactions.html', label: 'Billing',   icon: '\u25A6' },
       { href: 'profile.html',      label: 'Profile',   icon: '\u25CF' }
     ];
+    if (isAdmin()) links.push({ href: 'admin.html', label: 'Admin', icon: '\u2699' });
     return links.map(function (l) {
       var on = l.href === active;
       return '<a class="nav-link' + (on ? ' is-active' : '') + '" href="' + l.href + '">' +
@@ -593,15 +616,18 @@
             '<span class="theme-knob"></span>' +
           '</button>' +
 
+          '<button class="plan-chip" id="planChip" type="button" title="Change subscription plan">' +
+            '<span aria-hidden="true">&#11088;</span>' +
+            '<span id="planLabel">' + currentPlan().label + '</span>' +
+          '</button>' +
+
           '<div class="wallet-chip" title="Wallet balance">' +
             '<span aria-hidden="true">\uD83D\uDCB0</span>' +
             '<span class="wallet-amount" id="walletAmount">' + money(walletBalance()) + '</span>' +
           '</div>' +
 
           '<button class="btn-icon bell" id="bellBtn" type="button" aria-label="Notifications">' +
-            '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
-              '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>' +
-            '</svg>' +
+            '<i class="fa-solid fa-bell" aria-hidden="true"></i>' +
             (unread ? '<span class="bell-count" id="bellCount">' + (unread > 9 ? '9+' : unread) + '</span>' : '') +
           '</button>' +
 
@@ -609,9 +635,7 @@
             '<button class="user-btn" id="userBtn" type="button" aria-haspopup="true" aria-expanded="false">' +
               '<img class="avatar avatar-xs" src="' + escapeHtml(photo) + '" alt="" />' +
               '<span class="user-name">' + escapeHtml(user ? user.name : 'Account') + '</span>' +
-              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">' +
-                '<path d="M6 9l6 6 6-6"/>' +
-              '</svg>' +
+              '<i class="fa-solid fa-chevron-down" aria-hidden="true"></i>' +
             '</button>' +
             '<div class="dropdown" id="userDropdown">' +
               '<div class="dropdown-head">' +
@@ -628,9 +652,7 @@
           '</div>' +
 
           '<button class="nav-toggle" id="navToggle" type="button" aria-label="Menu">' +
-            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">' +
-              '<path d="M3 6h18M3 12h18M3 18h18"/>' +
-            '</svg>' +
+            '<i class="fa-solid fa-bars" aria-hidden="true"></i>' +
           '</button>' +
         '</div>' +
       '</div>';
@@ -644,6 +666,9 @@
       var mode = toggleTheme();
       toast(mode === 'dark' ? 'Dark mode on' : 'Light mode on', null, 'info', 2000);
     });
+
+    var planBtn = document.getElementById('planChip');
+    if (planBtn) planBtn.addEventListener('click', function () { openUpgradeModal(); });
 
     var navToggle = document.getElementById('navToggle');
     var navLinksEl = document.getElementById('navLinks');
@@ -720,6 +745,10 @@
         existing.remove();
       }
     }
+    var planLabel = document.getElementById('planLabel');
+    if (planLabel) {
+      planLabel.textContent = currentPlan().label;
+    }
   }
 
   /* ----------------------------------------------------------------------
@@ -732,7 +761,7 @@
       '<div class="modal-head">' +
         '<h3>Add wallet funds</h3>' +
         '<p class="small" style="color:rgba(255,255,255,.85);margin-top:4px">Top up instantly to unlock more partners.</p>' +
-        '<button class="modal-close" type="button" data-close aria-label="Close">&times;</button>' +
+        '<button class="modal-close" type="button" data-close aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>' +
       '</div>' +
       '<div class="modal-body">' +
         '<div class="stack gap-2">' +
@@ -852,7 +881,7 @@
         '<p class="small" style="color:rgba(255,255,255,.85);margin-top:4px">' +
           (list.length ? list.length + ' member' + (list.length === 1 ? '' : 's') + ' are interested in you' : 'No new alerts') +
         '</p>' +
-        '<button class="modal-close" type="button" data-close aria-label="Close">&times;</button>' +
+        '<button class="modal-close" type="button" data-close aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>' +
       '</div>' +
       body +
       (list.length ? '<div class="notif-foot"><button class="btn btn-primary" id="notifGo" type="button">View my matches</button></div>' : ''),
@@ -916,6 +945,609 @@
     }
   }
 
+  /* ----------------------------------------------------------------------
+     Layer 4: subscriptions, boosts and super likes
+     ---------------------------------------------------------------------- */
+  function currentPlan() {
+    var sub = state.subscription;
+    var plan = (sub && DATA.PLANS[sub.plan]) || DATA.PLANS.free;
+    var active = !!sub && sub.status === 'active';
+    return {
+      id: plan.id,
+      label: plan.label,
+      price: plan.price,
+      note: plan.note,
+      perks: plan.perks,
+      status: active ? 'active' : (sub ? sub.status : 'none'),
+      renewsAt: active ? sub.renewsAt : null,
+      startedAt: sub ? sub.startedAt : null
+    };
+  }
+
+  function planOrders() {
+    var orders = ['plus', 'gold'];
+    var current = currentPlan().id;
+    if (current === 'plus') orders = ['gold', 'plus'];
+    if (current === 'gold') orders = ['plus', 'gold'];
+    return orders;
+  }
+
+  function addMonthsTs(ts, months) {
+    var d = new Date(ts);
+    d.setMonth(d.getMonth() + months);
+    return d.getTime();
+  }
+
+  /**
+   * Change plan. Wallet funding is validated and debited before the stored plan
+   * is replaced, so a rejected payment can never downgrade a paying member.
+   */
+  function changePlan(planId, method) {
+    return new Promise(function (resolve, reject) {
+      var plan = DATA.PLANS[planId];
+      if (!plan) return reject(new Error('Unknown plan.'));
+
+      if (planId === 'free') {
+        state.subscription = { plan: 'free', price: 0, status: 'cancelled', startedAt: Date.now(), renewsAt: null };
+        persist();
+        return resolve({ ok: true, plan: 'free', price: 0, message: 'Switched to the Free plan.' });
+      }
+
+      if (currentPlan().id === planId && currentPlan().status === 'active') {
+        return resolve({ ok: true, plan: planId, price: 0, message: 'You are already on ' + plan.label + '.' });
+      }
+
+      if (method === 'wallet') {
+        if (walletBalance() < plan.price) {
+          return reject(new Error('Insufficient wallet balance. ' + plan.label + ' costs ' + money(plan.price) + '.'));
+        }
+      }
+
+      setTimeout(function () {
+        if (method === 'wallet') {
+          state.wallet.balance = round2(walletBalance() - plan.price);
+          addTransaction({
+            partnerId: null,
+            partnerName: plan.label + ' subscription',
+            tier: null,
+            amount: plan.price,
+            method: 'wallet',
+            description: plan.label + ' subscription'
+          });
+        }
+
+        var now = Date.now();
+        state.subscription = {
+          plan: planId,
+          price: plan.price,
+          status: 'active',
+          startedAt: now,
+          renewsAt: addMonthsTs(now, 1),
+          method: method || 'stripe'
+        };
+        persist();
+
+        resolve({
+          ok: true,
+          plan: planId,
+          price: plan.price,
+          balance: state.wallet.balance,
+          message: 'Subscribed to ' + plan.label + '. Renews next month.'
+        });
+      }, method === 'wallet' ? 850 : 1500);
+    });
+  }
+
+  function cancelPlan() {
+    return new Promise(function (resolve, reject) {
+      if (!state.subscription || state.subscription.status !== 'active') {
+        return reject(new Error('No active subscription to cancel.'));
+      }
+      setTimeout(function () {
+        state.subscription.status = 'cancelled';
+        persist();
+        resolve({ ok: true, message: 'Subscription cancelled. You keep access until the period ends.' });
+      }, 700);
+    });
+  }
+
+  function round2(n) { return Math.round(n * 100) / 100; }
+
+  var activeBoosts = function () {
+    var now = Date.now();
+    return (state.boosts || []).filter(function (b) { return b.status === 'active' && b.endsAt > now; });
+  };
+
+  function startBoost(type) {
+    return new Promise(function (resolve, reject) {
+      var def = DATA.BOOSTS[type];
+      if (!def) return reject(new Error('Unknown boost type.'));
+
+      var planId = currentPlan().id;
+      var kind = type === 'turbo' ? 'turbo' : 'spotlight';
+      var allowance = DATA.planAllowance(planId, kind);
+
+      var monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+
+      // Count from full history, not the active list, so a boost that already
+      // expired this month still consumes the monthly allowance.
+      var used = (state.boosts || []).filter(function (b) {
+        return b.startedAt >= monthStart.getTime() && b.type === type;
+      }).length;
+
+      var allowanceLeft = allowance === Infinity ? Infinity : Math.max(0, allowance - used);
+      var charge = allowanceLeft > 0 ? 0 : def.price;
+
+      if (charge > 0 && walletBalance() < charge) {
+        return reject(new Error('Insufficient wallet balance. ' + def.label + ' costs ' + money(def.price) + '.'));
+      }
+
+      setTimeout(function () {
+        if (charge > 0) {
+          state.wallet.balance = round2(walletBalance() - charge);
+          addTransaction({
+            partnerId: null,
+            partnerName: def.label + ' boost',
+            tier: null,
+            amount: charge,
+            method: 'wallet',
+            description: def.label + ' boost'
+          });
+        }
+
+        var now = Date.now();
+        state.boosts.unshift({
+          id: 'b_' + now + '_' + Math.random().toString(36).slice(2, 6),
+          type: type,
+          label: def.label,
+          cost: charge,
+          multiplier: def.multiplier,
+          startedAt: now,
+          endsAt: now + def.hours * 3600000,
+          status: 'active'
+        });
+        persist();
+
+        resolve({
+          ok: true,
+          type: type,
+          label: def.label,
+          charged: charge,
+          coveredByPlan: charge === 0,
+          multiplier: def.multiplier,
+          endsAt: now + def.hours * 3600000,
+          message: charge === 0
+            ? def.label + ' boost active, included with your plan.'
+            : def.label + ' boost active for ' + def.hours + 'h.'
+        });
+      }, 900);
+    });
+  }
+
+  function sendSuperLike(partnerId, message) {
+    return new Promise(function (resolve, reject) {
+      var partner = DATA.partnerById(partnerId);
+      if (!partner) return reject(new Error('Partner not found.'));
+
+      var existing = (state.superLikesSent || []).filter(function (s) { return s.partnerId === partnerId; });
+      if (existing.length) {
+        return resolve({ ok: true, duplicate: true, message: 'You already Super Liked ' + partner.name + '.' });
+      }
+
+      var planId = currentPlan().id;
+      var allowance = DATA.planAllowance(planId, 'superlike');
+      var sent = (state.superLikesSent || []).length;
+      var charge = (allowance === Infinity || sent < allowance) ? 0 : DATA.SUPER_LIKE_COST;
+
+      if (charge > 0 && walletBalance() < charge) {
+        return reject(new Error('Insufficient wallet balance. Super Like costs ' + money(DATA.SUPER_LIKE_COST) + '.'));
+      }
+
+      setTimeout(function () {
+        if (charge > 0) {
+          state.wallet.balance = round2(walletBalance() - charge);
+          addTransaction({
+            partnerId: null,
+            partnerName: 'Super Like',
+            tier: null,
+            amount: charge,
+            method: 'wallet',
+            description: 'Super Like'
+          });
+        }
+
+        state.superLikesSent.unshift({
+          id: 'sl_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          partnerId: partnerId,
+          name: partner.name,
+          photo: partner.photo,
+          tier: partner.tier,
+          cost: charge,
+          message: message || null,
+          at: Date.now()
+        });
+
+        // Bot partners react with a Super Like back so the feature reads
+        // as two-way once the partner is unlocked.
+        var me = state.profile;
+        if (partner.isBot && (me.gender === 'Man' ? partner.gender === 'Woman' : partner.gender === 'Man')) {
+          var alreadyBack = (state.superLikesReceived || []).some(function (s) { return s.partnerId === partnerId; });
+          if (!alreadyBack) {
+            state.superLikesReceived.unshift({
+              id: 'slr_' + Date.now(),
+              partnerId: partnerId,
+              name: partner.name,
+              photo: partner.photo,
+              tier: partner.tier,
+              message: DATA.pick([
+                'That profile caught my eye. Fancy a conversation?',
+                'You made me smile. Tell me something interesting.',
+                'I liked what I saw. What is your ideal weekend?'
+              ]),
+              at: Date.now() + 1500
+            });
+          }
+        }
+
+        persist();
+        resolve({
+          ok: true,
+          charged: charge,
+          coveredByPlan: charge === 0,
+          message: charge === 0
+            ? 'Super Liked ' + partner.name + '. Included with your plan.'
+            : 'Super Liked ' + partner.name + '.'
+        });
+      }, 850);
+    });
+  }
+
+  function pricingFor(planId) {
+    planId = planId || currentPlan().id;
+    return {
+      plans: Object.keys(DATA.PLANS).map(function (id) {
+        var p = DATA.PLANS[id];
+        return { id: p.id, label: p.label, price: p.price, note: p.note, perks: p.perks, popular: !!p.popular };
+      }),
+      boosts: Object.keys(DATA.BOOSTS).map(function (id) {
+        var b = DATA.BOOSTS[id];
+        return {
+          id: b.id, label: b.label, price: b.price, hours: b.hours, multiplier: b.multiplier, note: b.note,
+          included: DATA.planAllowance(planId, id === 'turbo' ? 'turbo' : 'spotlight') > 0
+        };
+      }),
+      superLike: { cost: DATA.SUPER_LIKE_COST, included: DATA.planAllowance(planId, 'superlike') > 0 }
+    };
+  }
+
+  /* ----------------------------------------------------------------------
+     Layer 4: admin console data
+     ---------------------------------------------------------------------- */
+  function isAdmin() { return !!(state.session && state.session.isAdmin); }
+
+  function adminGuard() {
+    if (!isAuthed()) { location.href = 'login.html'; return false; }
+    if (!isAdmin()) {
+      toast('Admins only', 'That console is restricted to platform staff.', 'error');
+      return false;
+    }
+    return true;
+  }
+
+  function seedAdminData() {
+    if (!state.admin) {
+      state.admin = deepClone(DATA.ADMIN_SEED);
+      persist();
+    }
+    return state.admin;
+  }
+
+  function adminAnalytics() {
+    var txs = state.transactions;
+    var unlocks = txs.filter(function (t) { return t.partnerId; });
+    var subs = txs.filter(function (t) { return /subscription/i.test(t.description || ''); });
+    var boosts = txs.filter(function (t) { return /boost/i.test(t.description || ''); });
+    var superLikes = txs.filter(function (t) { return /super like/i.test(t.description || ''); });
+
+    var sum = function (list) {
+      return Math.round(list.reduce(function (s, t) { return s + (t.amount || 0); }, 0) * 100) / 100;
+    };
+
+    var admins = adminGuard();
+
+    // Admin views the whole platform, not just this member's ledger.
+    var ledger = admins ? txs.concat(PLATFORM_LEDGER) : txs;
+    var unlocksAll = ledger.filter(function (t) { return t.partnerId; });
+    var subsAll = ledger.filter(function (t) { return /subscription/i.test(t.description || ''); });
+    var plan = currentPlan();
+
+    var revenueByTier = {};
+    unlocksAll.forEach(function (t) {
+      var key = t.tier || 'Standard';
+      revenueByTier[key] = round2((revenueByTier[key] || 0) + (t.amount || 0));
+    });
+
+    var revenueByMethod = {};
+    ledger.forEach(function (t) {
+      var key = t.method || 'wallet';
+      revenueByMethod[key] = round2((revenueByMethod[key] || 0) + (t.amount || 0));
+    });
+
+    var reports = (seedAdminData().reports || []);
+    var tickets = (seedAdminData().tickets || []);
+
+    var countBy = function (list, key) {
+      return list.reduce(function (acc, item) { acc[item[key]] = (acc[item[key]] || 0) + 1; return acc; }, {});
+    };
+
+    return {
+      overview: {
+        members: admins ? 2 + (state.unlocked.length || 0) : 1,
+        partners: DATA.PARTNERS.length,
+        unlocks: unlocksAll.length,
+        transactions: ledger.length,
+        grossRevenue: sum(ledger),
+        unlockRevenue: sum(unlocksAll),
+        subscriptionRevenue: sum(subsAll),
+        boostRevenue: sum(boosts),
+        superLikeRevenue: sum(superLikes),
+        activeSubscriptions: plan.status === 'active' ? 1 : 0,
+        mrr: plan.status === 'active' ? plan.price : 0,
+        planLabel: plan.label,
+        activeBoosts: activeBoosts().length,
+        superLikes: (state.superLikesSent || []).length,
+        walletBalance: walletBalance(),
+        pendingReports: countBy(reports, 'status').pending || 0,
+        openTickets: countBy(tickets, 'status').open || 0
+      },
+      revenueByTier: revenueByTier,
+      revenueByMethod: revenueByMethod,
+      // 14-day shape so the dashboard charts have something to draw
+      revenueSeries: buildSeries(ledger, 14, function (t) { return t.amount || 0; }),
+      signupSeries: buildSeries(ledger, 14, function () { return 1; }),
+      reports: reports,
+      tickets: tickets,
+      audit: seedAdminData().audit || []
+    };
+  }
+
+  function buildSeries(txs, days, valueOf) {
+    var out = [];
+    var now = Date.now();
+    for (var i = days - 1; i >= 0; i--) {
+      var dayStart = now - i * 86400000;
+      var d = new Date(dayStart);
+      var key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      var total = 0;
+      txs.forEach(function (t) {
+        var td = new Date(t.at);
+        var tKey = td.getFullYear() + '-' + String(td.getMonth() + 1).padStart(2, '0') + '-' + String(td.getDate()).padStart(2, '0');
+        if (tKey === key) total += valueOf(t);
+      });
+      out.push({ day: key, label: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), value: round2(total) });
+    }
+    return out;
+  }
+
+  // Background platform activity so the admin console is not empty on a
+  // fresh browser profile. Only admins ever read this.
+  var PLATFORM_LEDGER = [
+    { id: 'pl1', at: Date.now() - 3600000, amount: 29.99, method: 'stripe', tier: 'Premium', partnerId: 'p02', description: 'Profile unlock', status: 'completed', ref: 'DS-PLT001' },
+    { id: 'pl2', at: Date.now() - 7200000, amount: 9.99, method: 'wallet', tier: 'Standard', partnerId: 'p05', description: 'Profile unlock', status: 'completed', ref: 'DS-PLT002' },
+    { id: 'pl3', at: Date.now() - 10800000, amount: 14.99, method: 'stripe', tier: null, partnerId: null, description: 'Plus subscription', status: 'completed', ref: 'DS-PLT003' },
+    { id: 'pl4', at: Date.now() - 18000000, amount: 99.99, method: 'paypal', tier: 'Elite', partnerId: 'p03', description: 'Profile unlock', status: 'completed', ref: 'DS-PLT004' },
+    { id: 'pl5', at: Date.now() - 26000000, amount: 34.99, method: 'stripe', tier: null, partnerId: null, description: 'Gold subscription', status: 'completed', ref: 'DS-PLT005' },
+    { id: 'pl6', at: Date.now() - 40000000, amount: 4.99, method: 'wallet', tier: null, partnerId: null, description: 'Spotlight boost', status: 'completed', ref: 'DS-PLT006' },
+    { id: 'pl7', at: Date.now() - 60000000, amount: 7.99, method: 'stripe', tier: null, partnerId: null, description: 'Super Like', status: 'completed', ref: 'DS-PLT007' },
+    { id: 'pl8', at: Date.now() - 86400000, amount: 29.99, method: 'wallet', tier: 'Premium', partnerId: 'p04', description: 'Profile unlock', status: 'completed', ref: 'DS-PLT008' }
+  ];
+
+  function resolveReport(id, status, note) {
+    var list = seedAdminData().reports;
+    var row = list.filter(function (r) { return r.id === id; })[0];
+    if (!row) return Promise.reject(new Error('Report not found.'));
+    var allowed = ['pending', 'reviewing', 'resolved', 'dismissed', 'actioned'];
+    if (allowed.indexOf(status) === -1) return Promise.reject(new Error('Invalid report status.'));
+
+    return new Promise(function (resolve) {
+      setTimeout(function () {
+        row.status = status;
+        row.note = note || row.note;
+        row.reviewedAt = Date.now();
+        seedAdminData().audit.unshift({
+          action: 'report.' + status,
+          entity: 'Report ' + id,
+          by: (currentUser() || {}).name || 'Admin',
+          at: Date.now(),
+          note: note || ''
+        });
+        persist();
+        resolve({ ok: true, message: 'Report marked ' + status + '.' });
+      }, 500);
+    });
+  }
+
+  function setTicketStatus(id, status) {
+    var list = seedAdminData().tickets;
+    var row = list.filter(function (t) { return t.id === id; })[0];
+    if (!row) return Promise.reject(new Error('Ticket not found.'));
+    var allowed = ['open', 'pending', 'resolved', 'closed'];
+    if (allowed.indexOf(status) === -1) return Promise.reject(new Error('Invalid ticket status.'));
+
+    return new Promise(function (resolve) {
+      setTimeout(function () {
+        row.status = status;
+        seedAdminData().audit.unshift({
+          action: 'ticket.' + status,
+          entity: 'Ticket ' + id,
+          by: (currentUser() || {}).name || 'Admin',
+          at: Date.now()
+        });
+        persist();
+        resolve({ ok: true, message: 'Ticket marked ' + status + '.' });
+      }, 450);
+    });
+  }
+
+  function createTicket(category, subject, body, priority) {
+    return new Promise(function (resolve) {
+      setTimeout(function () {
+        var ticket = {
+          id: 't_' + Date.now().toString(36),
+          category: category || 'General',
+          subject: subject,
+          body: body,
+          priority: priority || 'normal',
+          status: 'open',
+          user: (currentUser() || {}).name || 'You',
+          email: (currentUser() || {}).email || '',
+          at: Date.now()
+        };
+        seedAdminData().tickets.unshift(ticket);
+        persist();
+        resolve(ticket);
+      }, 600);
+    });
+  }
+
+  function openUpgradeModal(currentPlanId) {
+    var pricing = pricingFor(currentPlanId || currentPlan().id);
+    var method = 'wallet';
+    var chosen = pricing.plans.filter(function (p) { return p.id !== 'free'; })[0];
+
+    modal(
+      '<div class="modal-head">' +
+        '<div class="modal-hero">' +
+          '<div class="modal-hero-icon">&#11088;</div>' +
+          '<div>' +
+            '<h3>Choose your plan</h3>' +
+            '<p class="small" style="color:rgba(255,255,255,.86);margin-top:3px">Cancel any time. Boosts and Super Likes reset monthly.</p>' +
+          '</div>' +
+        '</div>' +
+        '<button class="modal-close" type="button" data-close aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>' +
+      '</div>' +
+      '<div class="modal-body">' +
+        '<div class="plan-grid" id="planGrid">' +
+          pricing.plans.map(function (p) {
+            return '<button class="plan-card' + (p.popular ? ' is-popular' : '') + (chosen && chosen.id === p.id ? ' is-active' : '') + '" type="button" data-plan="' + p.id + '"' + (p.id === 'free' ? ' disabled' : '') + '>' +
+              (p.popular ? '<span class="tier-flag">Most popular</span>' : '') +
+              '<span class="plan-label">' + p.label + '</span>' +
+              '<span class="plan-price">' + (p.price ? '<sup>$</sup>' + p.price.toFixed(2) : 'Free') + (p.price ? '<em>/mo</em>' : '') + '</span>' +
+              '<span class="plan-note">' + p.note + '</span>' +
+              '<ul class="tier-feats">' +
+                p.perks.map(function (perk) { return '<li><span class="tick">&#10003;</span><span class="tiny">' + esc(perk) + '</span></li>'; }).join('') +
+              '</ul>' +
+            '</button>';
+          }).join('') +
+        '</div>' +
+
+        '<div class="field mt-6">' +
+          '<label class="label">How would you like to pay?</label>' +
+          '<div class="pay-grid" id="payGrid2">' +
+            '<div class="pay-card is-active" data-method="wallet" tabindex="0">' +
+              '<div class="pay-logo" style="font-size:1.3rem">&#128176;</div>' +
+              '<div class="pay-title">Wallet</div>' +
+              '<div class="pay-sub" id="walletSub2">' + money(walletBalance()) + '</div>' +
+            '</div>' +
+            '<div class="pay-card" data-method="stripe" tabindex="0">' +
+              '<div class="pay-logo" style="color:#635bff;font-weight:800;font-size:.8rem">stripe</div>' +
+              '<div class="pay-title">Card</div>' +
+              '<div class="pay-sub">Stripe</div>' +
+            '</div>' +
+            '<div class="pay-card" data-method="paypal" tabindex="0">' +
+              '<div class="pay-logo" style="color:#003087;font-weight:800;font-size:.78rem">PayPal</div>' +
+              '<div class="pay-title">PayPal</div>' +
+              '<div class="pay-sub">Recurring</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div id="upgradeStatus" class="mt-4"></div>' +
+        '<button class="btn btn-primary btn-block btn-lg mt-6" type="button" id="confirmUpgrade">Confirm upgrade</button>' +
+        '<p class="center tiny muted mt-4">Renews monthly until cancelled. Sandbox only, no real charge is made.</p>' +
+      '</div>',
+      {
+        xwide: true,
+        onMount: function (root) {
+          var status = root.querySelector('#upgradeStatus');
+          var confirm = root.querySelector('#confirmUpgrade');
+
+          function syncLabel() {
+            var plan = DATA.PLANS[chosen.id];
+            confirm.textContent = chosen.id === 'free'
+              ? 'Switch to Free'
+              : 'Upgrade to ' + plan.label + ' \u00B7 ' + money(plan.price);
+          }
+
+          function refresh() {
+            root.querySelectorAll('#planGrid .plan-card').forEach(function (c) {
+              c.classList.toggle('is-active', c.getAttribute('data-plan') === chosen.id);
+            });
+            var plan = DATA.PLANS[chosen.id];
+            if (method === 'wallet' && plan.price > walletBalance()) {
+              status.innerHTML =
+                '<div class="alert alert-warn"><span>&#9888;</span><span>' +
+                'Your wallet has ' + money(walletBalance()) + ' but ' + plan.label + ' costs ' + money(plan.price) + '. ' +
+                'Top up or choose a card.</span></div>';
+            } else {
+              status.innerHTML = '';
+            }
+            syncLabel();
+          }
+
+          root.querySelectorAll('[data-close]').forEach(function (b) {
+            b.addEventListener('click', closeModal);
+          });
+
+          root.querySelectorAll('#planGrid .plan-card:not([disabled])').forEach(function (card) {
+            card.addEventListener('click', function () {
+              chosen = DATA.PLANS[card.getAttribute('data-plan')];
+              refresh();
+            });
+          });
+
+          root.querySelectorAll('#payGrid2 .pay-card').forEach(function (c) {
+            c.addEventListener('click', function () {
+              method = c.getAttribute('data-method');
+              root.querySelectorAll('#payGrid2 .pay-card').forEach(function (x) {
+                x.classList.toggle('is-active', x === c);
+              });
+              refresh();
+            });
+          });
+
+          refresh();
+
+          confirm.addEventListener('click', function () {
+            confirm.disabled = true;
+            confirm.innerHTML = '<span class="spinner"></span> Processing\u2026';
+            status.innerHTML =
+              '<div class="processing" style="padding:var(--s-6) 0">' +
+                '<div class="spinner-ring"></div>' +
+                '<div class="strong small">' +
+                  (method === 'wallet' ? 'Checking wallet balance\u2026' : 'Opening secure checkout\u2026') +
+                '</div>' +
+                (method === 'wallet' ? '' : '<div class="tiny muted">Sandbox \u00B7 no real charge is made</div>') +
+              '</div>';
+
+            changePlan(chosen.id, method).then(function (res) {
+              closeModal();
+              refreshChrome();
+              toast('Plan updated', res.message, 'success');
+              document.dispatchEvent(new CustomEvent('ds:plan-changed'));
+            }).catch(function (err) {
+              confirm.disabled = false;
+              refresh();
+              status.innerHTML = '<div class="alert alert-danger"><span>&#9888;</span><span>' + esc(err.message) + '</span></div>';
+            });
+          });
+        }
+      }
+    );
+  }
+
   global.App = {
     // store
     state: function () { return state; },
@@ -947,6 +1579,23 @@
     unlock: unlockPartner,
     addFunds: addFunds,
     transactions: function () { return state.transactions; },
+    // monetization
+    currentPlan: currentPlan,
+    planOrders: planOrders,
+    changePlan: changePlan,
+    cancelPlan: cancelPlan,
+    activeBoosts: activeBoosts,
+    startBoost: startBoost,
+    sendSuperLike: sendSuperLike,
+    pricing: pricingFor,
+    openUpgradeModal: openUpgradeModal,
+    // admin
+    isAdmin: isAdmin,
+    adminGuard: adminGuard,
+    adminAnalytics: adminAnalytics,
+    resolveReport: resolveReport,
+    setTicketStatus: setTicketStatus,
+    createTicket: createTicket,
     // chat
     messages: getMessages,
     send: addMessage,
@@ -970,6 +1619,7 @@
     // format
     money: money,
     timeAgo: timeAgo,
+    timeUntil: timeUntil,
     clock: clockTime,
     dayLabel: dayLabel,
     esc: escapeHtml,

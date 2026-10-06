@@ -1,5 +1,6 @@
 // Authentication middleware: verifies JWT tokens and protects routes
 import jwt from 'jsonwebtoken';
+import { UserModel } from '../models/index.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
 
@@ -39,4 +40,30 @@ export const optionalAuth = (req, res, next) => {
         req.user = null;
     }
     next();
+};
+
+/**
+ * Requires a valid token AND the is_admin flag. The role is read from the
+ * database on every request rather than trusted from the token, so a
+ * demoted admin loses access immediately instead of at token expiry.
+ */
+export const requireAdmin = async (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({ message: 'Access token required' });
+    }
+
+    try {
+        const user = await UserModel.findById(req.user.id);
+        if (!user) {
+            return res.status(401).json({ message: 'Account not found' });
+        }
+        if (!user.is_admin) {
+            return res.status(403).json({ message: 'Administrator access required' });
+        }
+        req.user.isAdmin = true;
+        next();
+    } catch (err) {
+        console.error('Admin auth error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
 };

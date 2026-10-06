@@ -18,7 +18,9 @@ const LoginPage = () => {
     setError('');
     try {
       await login(email, password);
-      navigate('/dashboard');
+      // Let the root route pick the landing page: a member with a profile goes
+      // to the dashboard, a new member to onboarding, an admin to the console.
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
     } finally {

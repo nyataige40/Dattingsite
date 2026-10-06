@@ -3,10 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Partner catalogue — Dattingsite</title>
+<title>Partner catalogue â€” Dattingsite</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
+<!-- Font Awesome 6: single icon set for the whole UI (replaces inline SVG + emoji) -->
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha384-dABdfBfUoC8vJUBOwGVdm8L9qlMWaHTIfXt+7GnZCIo=" crossorigin="anonymous" referrerpolicy="no-referrer" />
 <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
@@ -21,12 +24,12 @@
         <span class="eyebrow">Curated catalogue</span>
         <h1 class="dash-title">Partners worth unlocking</h1>
         <p class="lead mt-2">
-          Every profile is selected for compatibility. Browse free — pay only for the
+          Every profile is selected for compatibility. Browse free â€” pay only for the
           conversations you actually want.
         </p>
       </div>
       <button class="btn btn-outline btn-sm" type="button" id="topUpBtn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        <i class="fa-solid fa-plus" aria-hidden="true"></i>
         Add funds
       </button>
     </div>
@@ -93,6 +96,11 @@
   var tier = 'all';
   var sort = 'recommended';
   var hideUnlocked = false;
+  var pricing = App.pricing();
+
+  function superLiked(id) {
+    return (App.state().superLikesSent || []).some(function (s) { return s.partnerId === id; });
+  }
 
   /* Deep link support: catalogue.html?tier=Premium */
   var params = new URLSearchParams(location.search);
@@ -135,9 +143,7 @@
     var lock = unlocked ? '' :
       '<div class="pcard-lock" data-unlock="' + p.id + '">' +
         '<div class="pcard-lock-icon">' +
-          '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-            '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>' +
-          '</svg>' +
+          '<i class="fa-solid fa-lock" aria-hidden="true" style="font-size:22px"></i>' +
         '</div>' +
         '<div class="pcard-lock-title">Unlock partner</div>' +
         '<div class="pcard-lock-price">' + App.money(info.price) + ' &middot; ' + p.tier + '</div>' +
@@ -145,7 +151,11 @@
 
     var actions = unlocked
       ? '<a class="btn btn-primary btn-sm" href="chat.html?with=' + p.id + '">Open chat</a>' +
-        '<button class="btn btn-outline btn-sm" type="button" data-peek="' + p.id + '">Profile</button>'
+        '<button class="btn btn-outline btn-sm" type="button" data-peek="' + p.id + '">Profile</button>' +
+        (superLiked(p.id)
+          ? '<span class="btn btn-ghost btn-sm" style="pointer-events:none" title="Super Like sent"><i class="fa-solid fa-heart" aria-hidden="true"></i> Sent</span>'
+          : '<button class="btn btn-gold btn-sm" type="button" data-superlike="' + p.id + '" title="' +
+            (pricing.superLike.included ? 'Included in your plan' : 'Costs ' + App.money(pricing.superLike.cost)) + '"><i class="fa-solid fa-heart" aria-hidden="true"></i> Super Like</button>')
       : '<button class="btn btn-primary btn-sm" type="button" data-unlock="' + p.id + '">Unlock ' + App.money(info.price) + '</button>' +
         '<button class="btn btn-ghost btn-sm" type="button" data-peek="' + p.id + '">Peek</button>';
 
@@ -241,7 +251,7 @@
             '<div class="mt-2">' + App.tierClass(p.tier) + '</div>' +
           '</div>' +
         '</div>' +
-        '<button class="modal-close" type="button" data-close aria-label="Close">&times;</button>' +
+        '<button class="modal-close" type="button" data-close aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>' +
       '</div>' +
       '<div class="modal-body">' +
         '<div style="position:relative;filter:blur(6px);user-select:none;pointer-events:none">' +
@@ -287,7 +297,7 @@
             '<p class="small" style="color:rgba(255,255,255,.86);margin-top:3px">' + p.age + ' &middot; ' + App.esc(p.city) + '</p>' +
           '</div>' +
         '</div>' +
-        '<button class="modal-close" type="button" data-close aria-label="Close">&times;</button>' +
+        '<button class="modal-close" type="button" data-close aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>' +
       '</div>' +
 
       '<div class="modal-body">' +
@@ -419,8 +429,86 @@
     if (peekBtn) {
       var p2 = App.data.partnerById(peekBtn.getAttribute('data-peek'));
       if (p2) openPeek(p2);
+      return;
     }
+    var slBtn = e.target.closest('[data-superlike]');
+    if (slBtn) sendSuperLike(slBtn);
   });
+
+  /* ---------- Super Like ---------- */
+  function sendSuperLike(btn) {
+    var id = btn.getAttribute('data-superlike');
+    var p = App.data.partnerById(id);
+    if (!p) return;
+
+    App.modal(
+      '<div class="modal-head">' +
+        '<div class="modal-hero">' +
+          '<img class="avatar avatar-md" src="' + App.img(p, 200) + '" alt="" />' +
+          '<div>' +
+            '<h3>Super Like ' + App.esc(p.name) + '</h3>' +
+            '<p class="small" style="color:rgba(255,255,255,.86);margin-top:3px">' + p.age + ' &middot; ' + App.esc(p.city) + '</p>' +
+          '</div>' +
+        '</div>' +
+        '<button class="modal-close" type="button" data-close aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>' +
+      '</div>' +
+      '<div class="modal-body">' +
+        '<div class="alert alert-info">' +
+          '<span><i class="fa-solid fa-heart" aria-hidden="true"></i></span>' +
+          '<span>' + (pricing.superLike.included
+            ? 'Super Likes are included with your ' + App.currentPlan().label + ' plan, so this one is free.'
+            : 'Super Likes cost ' + App.money(pricing.superLike.cost) + ' each on the Free plan. Upgrade to Plus for 3 a month.') +
+          '</span>' +
+        '</div>' +
+        '<div class="field mt-5">' +
+          '<label class="label" for="slNote">Add a note (optional)</label>' +
+          '<textarea class="input" id="slNote" rows="3" maxlength="140" placeholder="Say why they stood out&hellip;"></textarea>' +
+          '<span class="hint" id="slCount">0 / 140</span>' +
+        '</div>' +
+        '<div id="slStatus" class="mt-4"></div>' +
+        '<div class="modal-foot">' +
+          '<button class="btn btn-ghost" type="button" data-close>Cancel</button>' +
+          '<button class="btn btn-gold" type="button" id="confirmSL">' +
+            (pricing.superLike.included ? 'Send free Super Like' : 'Send for ' + App.money(pricing.superLike.cost)) +
+          '</button>' +
+        '</div>' +
+      '</div>',
+      {
+        onMount: function (root) {
+          root.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', App.closeModal); });
+
+          var note = root.querySelector('#slNote');
+          note.addEventListener('input', function () {
+            root.querySelector('#slCount').textContent = this.value.length + ' / 140';
+          });
+
+          root.querySelector('#confirmSL').addEventListener('click', function () {
+            var b = this;
+            b.disabled = true;
+            b.innerHTML = '<span class="spinner"></span> Sending';
+            root.querySelector('#slStatus').innerHTML =
+              '<div class="processing" style="padding:var(--s-5) 0">' +
+                '<div class="spinner-ring spinner-ring-indigo"></div>' +
+                '<div class="strong small">Sending your Super Like&hellip;</div>' +
+              '</div>';
+
+            App.sendSuperLike(id, note.value.trim() || null).then(function (res) {
+              App.closeModal();
+              App.refreshChrome();
+              pricing = App.pricing();
+              render();
+              App.toast('Super Like sent', res.message, 'success');
+            }).catch(function (err) {
+              b.disabled = false;
+              b.textContent = 'Send';
+              root.querySelector('#slStatus').innerHTML =
+                '<div class="alert alert-danger"><span>&#9888;</span><span>' + App.esc(err.message) + '</span></div>';
+            });
+          });
+        }
+      }
+    );
+  }
 </script>
 </body>
 </html>

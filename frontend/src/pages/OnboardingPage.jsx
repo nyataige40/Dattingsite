@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Upload, Check } from '../components/Icons';
+import { Upload, Check, Mars, Venus } from '../components/Icons';
 
 const INTERESTS = [
   'Hiking', 'Travel', 'Cooking', 'Reading', 'Music', 'Art', 'Sports',
@@ -128,7 +128,7 @@ const OnboardingPage = () => {
                     formData.gender === 'Man' ? 'border-primary bg-primary-50 text-primary' : 'border-border hover:border-primary-300'
                   }`}
                 >
-                  <div className="text-3xl mb-1">👨</div>
+                  <Mars size={30} className="mx-auto mb-1" />
                   <div className="font-semibold">Man</div>
                 </button>
                 <button
@@ -138,7 +138,7 @@ const OnboardingPage = () => {
                     formData.gender === 'Woman' ? 'border-primary bg-primary-50 text-primary' : 'border-border hover:border-primary-300'
                   }`}
                 >
-                  <div className="text-3xl mb-1">👩</div>
+                  <Venus size={30} className="mx-auto mb-1" />
                   <div className="font-semibold">Woman</div>
                 </button>
               </div>

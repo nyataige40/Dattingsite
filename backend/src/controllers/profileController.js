@@ -73,31 +73,30 @@ export const updateProfile = async (req, res) => {
             return res.status(404).json({ message: 'Profile not found' });
         }
 
-        const db = (await import('../models/index.js')).getDb();
-        return new Promise((resolve) => {
-            let query = 'UPDATE profiles SET ';
-            const fields = [];
-            const values = [];
+        // Build through the model layer rather than holding a raw connection,
+        // which previously closed the shared handle out from under other queries.
+        const patch = {};
+        if (bio !== undefined) patch.bio = bio;
+        if (location !== undefined) patch.location = location;
+        if (interests !== undefined) patch.interests = interests;
+        if (photo_url !== undefined) patch.photo_url = photo_url;
 
-            if (bio !== undefined) { fields.push('bio = ?'); values.push(bio); }
-            if (location !== undefined) { fields.push('location = ?'); values.push(location); }
-            if (interests !== undefined) { fields.push('interests = ?'); values.push(JSON.stringify(interests)); }
-            if (photo_url !== undefined) { fields.push('photo_url = ?'); values.push(photo_url); }
+        if (Object.keys(patch).length === 0) {
+            return res.status(400).json({ message: 'No fields to update' });
+        }
 
-            query += fields.join(', ') + ' WHERE user_id = ?';
-            values.push(userId);
+        const result = await ProfileModel.updateFields(userId, patch);
+        if (!result.success) {
+            return res.status(500).json({ message: 'Update failed' });
+        }
 
-            db.run(query, values, (err) => {
-                db.close();
-                if (err) {
-                    res.status(500).json({ message: 'Update failed' });
-                } else {
-                    res.json({ message: 'Profile updated successfully' });
-                }
-                resolve();
-            });
+        const updated = await ProfileModel.findByUserId(userId);
+        res.json({
+            message: 'Profile updated successfully',
+            profile: { ...updated, interests: updated.interests ? JSON.parse(updated.interests) : [] }
         });
     } catch (err) {
+        console.error('Profile update error:', err);
         res.status(500).json({ message: 'Server error' });
     }
 };

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
-import { Heart } from './Icons';
+import { Heart, HeartFilled } from './Icons';
 
-const ProfileCard = ({ profile, showUnlockButton = false }) => {
+const ProfileCard = ({ profile, showUnlockButton = false, superLiked = false, onSuperLike = null }) => {
   const tierColors = {
     Standard: 'tier-standard',
     Premium: 'tier-premium',
@@ -75,6 +75,21 @@ const ProfileCard = ({ profile, showUnlockButton = false }) => {
           >
             Chat Now
           </Link>
+        )}
+
+        {profile.is_unlocked && onSuperLike && (
+          superLiked ? (
+            <span className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-semibold bg-primary-50 text-primary border border-primary-100">
+              <HeartFilled size={16} /> Super Like sent
+            </span>
+          ) : (
+            <button
+              onClick={() => onSuperLike(profile)}
+              className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-rose-500 to-pink-600 hover:brightness-110 transition-all"
+            >
+              <HeartFilled size={16} /> Super Like
+            </button>
+          )
         )}
       </div>
     </div>

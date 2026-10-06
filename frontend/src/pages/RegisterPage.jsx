@@ -28,7 +28,8 @@ const RegisterPage = () => {
     setError('');
     try {
       await register(email, password, fullName);
-      navigate('/onboarding');
+      // The root route decides the landing page for each kind of account.
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
     } finally {

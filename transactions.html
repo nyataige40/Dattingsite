@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
+<!-- Font Awesome 6: single icon set for the whole UI (replaces inline SVG + emoji) -->
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha384-dABdfBfUoC8vJUBOwGVdm8L9qlMWaHTIfXt+7GnZCIo=" crossorigin="anonymous" referrerpolicy="no-referrer" />
 <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
@@ -23,10 +26,22 @@
         <p class="muted mt-2">Every unlock is a one-time payment. No subscriptions, no renewals.</p>
       </div>
       <button class="btn btn-primary btn-sm" type="button" id="topUpBtn">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        <i class="fa-solid fa-plus" aria-hidden="true"></i>
         Add funds
       </button>
     </div>
+
+    <!-- ============ Current plan ============ -->
+    <article class="card mb-6">
+      <div class="between mb-5">
+        <div>
+          <h2 style="font-size:1.15rem">Your plan</h2>
+          <p class="tiny muted mt-2" id="planSub">Unlocks are one-time and always available on any plan.</p>
+        </div>
+        <button class="btn btn-primary btn-sm" type="button" id="changePlanBtn">Change plan</button>
+      </div>
+      <div id="planPanel"></div>
+    </article>
 
     <!-- ============ Balance + summary ============ -->
     <div class="tx-summary">
@@ -53,6 +68,19 @@
     <article class="card mb-6">
       <h2 style="font-size:1.1rem">Spend by tier</h2>
       <div class="stack mt-5" id="tierBars"></div>
+    </article>
+
+    <!-- ============ Boosts ============ -->
+    <article class="card mb-6">
+      <div class="between mb-5">
+        <div>
+          <h2 style="font-size:1.15rem">Profile boosts</h2>
+          <p class="tiny muted mt-2">Buy extra visibility. Your plan includes a monthly allowance.</p>
+        </div>
+        <span class="badge badge-soft" id="activeBoostCount">0 active</span>
+      </div>
+      <div class="boost-grid" id="boostGrid"></div>
+      <div id="boostHistory" class="mt-6"></div>
     </article>
 
     <!-- ============ History ============ -->
@@ -214,11 +242,114 @@
   document.getElementById('topUpBtn').addEventListener('click', function () { App.openTopUp(); });
   document.getElementById('balanceTopUp').addEventListener('click', function () { App.openTopUp(); });
 
+  /* ---------- Plan panel ---------- */
+  function renderPlan() {
+    var plan = App.currentPlan();
+    document.getElementById('planSub').textContent = plan.status === 'active'
+      ? 'Renews ' + new Date(plan.renewsAt).toLocaleDateString() + '. Cancel any time.'
+      : 'You are not subscribed. Boosts and Super Likes are charged per use.';
+
+    document.getElementById('planPanel').innerHTML =
+      '<div class="between mb-5 wrap gap-4">' +
+        '<div class="row gap-3 wrap">' +
+          '<span class="badge badge-soft" style="font-size:.8rem;padding:.4rem .9rem">' + App.esc(plan.label) + ' plan</span>' +
+          (plan.status === 'active'
+            ? '<span class="small muted">' + (plan.price ? App.money(plan.price) + '/month' : 'Free') + ' &middot; active</span>'
+            : '<span class="small muted">Not subscribed</span>') +
+        '</div>' +
+        (plan.status === 'active' && plan.price
+          ? '<button class="btn btn-ghost btn-sm" type="button" id="cancelPlanBtn">Cancel subscription</button>'
+          : '') +
+      '</div>' +
+      '<ul class="tier-feats">' +
+        plan.perks.map(function (perk) {
+          return '<li><span class="tick">&#10003;</span><span class="small">' + App.esc(perk) + '</span></li>';
+        }).join('') +
+      '</ul>';
+
+    var cancel = document.getElementById('cancelPlanBtn');
+    if (cancel) {
+      cancel.addEventListener('click', function () {
+        var btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner spinner-dark"></span> Cancelling';
+        App.cancelPlan().then(function (res) {
+          renderAll();
+          App.toast('Subscription cancelled', res.message, 'success');
+        }).catch(function (err) {
+          btn.disabled = false;
+          btn.textContent = 'Cancel subscription';
+          App.toast('Could not cancel', err.message, 'error');
+        });
+      });
+    }
+  }
+
+  /* ---------- Boosts ---------- */
+  function renderBoosts() {
+    var pricing = App.pricing();
+    var active = App.activeBoosts();
+
+    document.getElementById('activeBoostCount').textContent =
+      active.length + (active.length === 1 ? ' active' : ' active');
+
+    document.getElementById('boostGrid').innerHTML = pricing.boosts.map(function (b) {
+      return '<div class="boost-card">' +
+        '<div class="boost-icon">' + (b.id === 'turbo' ? '<i class="fa-solid fa-bolt" aria-hidden="true"></i>' : '<i class="fa-solid fa-lightbulb" aria-hidden="true"></i>') + '</div>' +
+        '<div class="boost-name">' + App.esc(b.label) + '</div>' +
+        '<div class="boost-note">' + App.esc(b.note) + '</div>' +
+        '<div class="boost-meta">' +
+          '<span class="boost-price">' + App.money(b.price) + '</span>' +
+          '<span class="boost-x">' + b.multiplier + 'x</span>' +
+        '</div>' +
+        (b.included ? '<span class="boost-included">Included in your plan</span>' : '') +
+        '<button class="btn ' + (b.included ? 'btn-outline' : 'btn-primary') + ' btn-sm btn-block mt-4" type="button" data-boost="' + b.id + '">' +
+          (b.included ? 'Use free boost' : 'Boost for ' + App.money(b.price)) +
+        '</button>' +
+      '</div>';
+    }).join('');
+
+    var history = App.state().boosts || [];
+    document.getElementById('boostHistory').innerHTML = history.length
+      ? '<div class="eyebrow" style="margin-bottom:var(--s-3)">Recent boosts</div>' +
+        history.slice(0, 4).map(function (b) {
+          var live = b.status === 'active' && b.endsAt > Date.now();
+          return '<div class="between small" style="padding:var(--s-2) 0;border-bottom:1px dashed var(--border)">' +
+            '<span>' + App.esc(b.label) +
+              ' <span class="tiny muted">' + b.multiplier + 'x &middot; ' + App.timeUntil(b.endsAt) + '</span></span>' +
+            '<span class="strong">' + (b.cost ? App.money(b.cost) : 'Plan') + (live ? ' <span class="badge badge-soft">live</span>' : '') + '</span>' +
+          '</div>';
+        }).join('')
+      : '';
+  }
+
+  document.getElementById('boostGrid').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-boost]');
+    if (!btn) return;
+    var type = btn.getAttribute('data-boost');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Activating';
+
+    App.startBoost(type).then(function (res) {
+      renderAll();
+      App.refreshChrome();
+      App.toast(res.label + ' boost active', res.message, 'success');
+    }).catch(function (err) {
+      btn.disabled = false;
+      renderBoosts();
+      App.toast('Boost failed', err.message, 'error');
+    });
+  });
+
+  document.getElementById('changePlanBtn').addEventListener('click', function () { App.openUpgradeModal(); });
+
   /* ---------- Boot ---------- */
   function renderAll() {
+    renderPlan();
     renderSummary();
     renderTierBars();
     renderList();
+    renderBoosts();
   }
 
   renderPricing();

@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
+<!-- Font Awesome 6: single icon set for the whole UI (replaces inline SVG + emoji) -->
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha384-dABdfBfUoC8vJUBOwGVdm8L9qlMWaHTIfXt+7GnZCIo=" crossorigin="anonymous" referrerpolicy="no-referrer" />
 <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
@@ -87,7 +90,7 @@
 
         <div id="photoPreviewWrap">
           <div class="photo-placeholder">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+            <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true" style="font-size:34px"></i>
           </div>
         </div>
 
@@ -106,7 +109,7 @@
     <!-- ============ STEP 3: Interests + Bio ============ -->
     <section class="card card-glass step-panel hide" id="step3">
       <div class="step-title">
-        <span class="step-title-emoji">&#10084;</span>
+        <span class="step-title-emoji"><i class="fa-solid fa-heart" aria-hidden="true"></i></span>
         <h2>Interests &amp; about you</h2>
       </div>
       <p class="small muted mb-6">Pick at least three. These drive your match quality.</p>
@@ -129,7 +132,7 @@
     <!-- Nav buttons -->
     <div class="between mt-8">
       <button class="btn btn-ghost" type="button" id="backBtn" disabled>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
         Back
       </button>
 

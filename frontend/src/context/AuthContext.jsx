@@ -34,7 +34,11 @@ export const AuthProvider = ({ children }) => {
       const res = await api.get('/api/profile');
       setProfile(res.data.profile);
     } catch (err) {
-      console.error('Failed to fetch profile:', err);
+      // 404 simply means no profile has been created yet, which is a normal
+      // state for a new member or an admin, so it is not worth logging.
+      if (err.response?.status !== 404) {
+        console.error('Failed to fetch profile:', err);
+      }
     } finally {
       setLoading(false);
     }

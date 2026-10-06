@@ -11,6 +11,16 @@ export const generateToken = (userId) => {
     return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 };
 
+// The client routes on this flag, so it travels with every auth response.
+// The server still re-reads is_admin from the database per admin request.
+const publicUser = (user, extra = {}) => ({
+    id: user.id,
+    email: user.email,
+    full_name: user.full_name,
+    is_admin: user.is_admin ? 1 : 0,
+    ...extra
+});
+
 export const hashPassword = async (password) => {
     return await bcrypt.hash(password, 12);
 };
@@ -34,7 +44,7 @@ export const registerUser = async ({ email, password, full_name }) => {
     await WalletModel.create(user.id, 50.00);
 
     const token = generateToken(user.id);
-    return { user: { id: user.id, email: user.email, full_name: user.full_name }, token };
+    return { user: publicUser(user), token };
 };
 
 // Login with email/password
@@ -50,7 +60,7 @@ export const loginUser = async ({ email, password }) => {
     }
 
     const token = generateToken(user.id);
-    return { user: { id: user.id, email: user.email, full_name: user.full_name }, token };
+    return { user: publicUser(user), token };
 };
 
 // Social login (Google / Facebook)
@@ -78,7 +88,7 @@ export const socialLogin = async ({ email, full_name, provider, provider_id }) =
     }
 
     const token = generateToken(user.id);
-    return { user: { id: user.id, email: user.email, full_name: user.full_name, auth_provider: user.auth_provider }, token };
+    return { user: publicUser(user, { auth_provider: user.auth_provider }), token };
 };
 
 export const verifyToken = (token) => {

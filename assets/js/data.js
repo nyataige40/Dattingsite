@@ -267,11 +267,116 @@
     };
   }
 
+  /* ----------------------------------------------------------------------
+     Layer 4: business & management architecture
+     Mirrors backend/src/services/subscriptionService.js and boostService.js
+     ---------------------------------------------------------------------- */
+  var PLANS = {
+    free: {
+      id: 'free', label: 'Free', price: 0,
+      note: 'Get started with the essentials',
+      perks: [
+        'Unlimited profile views',
+        '7 conversations per week',
+        'Standard discovery ranking',
+        '1 Spotlight boost per month'
+      ]
+    },
+    plus: {
+      id: 'plus', label: 'Plus', price: 14.99, popular: true,
+      note: 'For members who are ready to actually meet someone',
+      perks: [
+        'Unlimited conversations',
+        'See who liked you',
+        'Advanced discovery filters',
+        '5 Spotlight boosts per month',
+        '3 Super Likes per month'
+      ]
+    },
+    gold: {
+      id: 'gold', label: 'Gold', price: 34.99,
+      note: 'Maximum visibility, zero limits',
+      perks: [
+        'Everything in Plus',
+        'Top-of-feed placement',
+        'Unlimited boosts',
+        'Unlimited Super Likes',
+        'Priority support queue'
+      ]
+    }
+  };
+
+  var BOOSTS = {
+    spotlight: {
+      id: 'spotlight', label: 'Spotlight', price: 4.99, hours: 6, multiplier: 3,
+      note: 'Top slot in discovery for 6 hours'
+    },
+    turbo: {
+      id: 'turbo', label: 'Turbo', price: 9.99, hours: 24, multiplier: 10,
+      note: '10x visibility for a full day'
+    },
+    spotlightWeek: {
+      id: 'spotlightWeek', label: 'Spotlight Week', price: 19.99, hours: 168, multiplier: 3,
+      note: 'Continuous placement for a week'
+    }
+  };
+
+  var SUPER_LIKE_COST = 7.99;
+
+  // Monthly allowance per plan, matching the backend rules.
+  function planAllowance(planId, kind) {
+    if (planId === 'gold') return Infinity;
+    if (planId === 'plus') {
+      if (kind === 'superlike') return 3;
+      return kind === 'spotlight' ? 5 : 1;
+    }
+    if (planId === 'free') return kind === 'spotlight' ? 1 : 0;
+    return 0;
+  }
+
+  var REPORTS = [
+    { id: 'r1', subject: 'Profile', subjectName: 'Sophia', reason: 'Harassment', severity: 'high', status: 'pending',
+      details: 'Message felt threatening and repetitive.', reporter: 'Demo User', at: Date.now() - 300000 },
+    { id: 'r2', subject: 'Message', subjectName: 'Conversation', reason: 'Spam', severity: 'medium', status: 'pending',
+      details: 'Repeated promotional links across several chats.', reporter: 'Marcus T.', at: Date.now() - 900000 },
+    { id: 'r3', subject: 'Profile', subjectName: 'Amelia', reason: 'Fake profile', severity: 'medium', status: 'reviewing',
+      details: 'Photos appear to be taken from another account.', reporter: 'Priya S.', at: Date.now() - 2600000 },
+    { id: 'r4', subject: 'Profile', subjectName: 'Lucas', reason: 'Inappropriate media', severity: 'high', status: 'resolved',
+      details: 'Photo set included explicit content.', reporter: 'Anon', at: Date.now() - 5200000, note: 'Media removed' },
+    { id: 'r5', subject: 'Message', subjectName: 'Conversation', reason: 'Scam', severity: 'high', status: 'dismissed',
+      details: 'Asked for money for verification. Account is a bot, already removed.', reporter: 'Anon', at: Date.now() - 9000000 }
+  ];
+
+  var TICKETS = [
+    { id: 't1', category: 'Billing', subject: 'Charged but subscription did not activate', priority: 'high', status: 'open',
+      body: 'Paid for Plus yesterday and it still shows Free.', user: 'Demo User', email: 'demo@premium.com', at: Date.now() - 600000 },
+    { id: 't2', category: 'Account', subject: 'Cannot reset my password', priority: 'normal', status: 'open',
+      body: 'The reset email never arrives.', user: 'Rina K.', email: 'rina@example.com', at: Date.now() - 3600000 },
+    { id: 't3', category: 'Billing', subject: 'Refund request for a boost', priority: 'normal', status: 'pending',
+      body: 'Bought Spotlight by mistake, it was not useful.', user: 'Owen P.', email: 'owen@example.com', at: Date.now() - 7200000 },
+    { id: 't4', category: 'General', subject: 'Feature suggestion: video prompts', priority: 'low', status: 'resolved',
+      body: 'Would love short video answers to prompts.', user: 'Hana M.', email: 'hana@example.com', at: Date.now() - 10800000 }
+  ];
+
+  var ADMIN_SEED = {
+    reports: REPORTS,
+    tickets: TICKETS,
+    audit: [
+      { action: 'report.resolved', entity: 'Moderation report #4', by: 'Platform Admin', at: Date.now() - 86400000, note: 'Media removed' },
+      { action: 'ticket.resolved', entity: 'Ticket #4', by: 'Platform Admin', at: Date.now() - 172800000 }
+    ]
+  };
+
   global.DS_DATA = {
     PARTNERS: PARTNERS,
     TIERS: TIERS,
     STARTING_BALANCE: STARTING_BALANCE,
     INTEREST_LINES: INTEREST_LINES,
+    PLANS: PLANS,
+    BOOSTS: BOOSTS,
+    SUPER_LIKE_COST: SUPER_LIKE_COST,
+    ADMIN_SEED: ADMIN_SEED,
+    planAllowance: planAllowance,
     partnerById: partnerById,
     partnersFor: partnersFor,
     personaKeyFor: personaKeyFor,

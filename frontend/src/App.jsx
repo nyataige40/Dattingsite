@@ -11,6 +11,7 @@ import CataloguePage from './pages/CataloguePage';
 import ChatPage from './pages/ChatPage';
 import ProfilePage from './pages/ProfilePage';
 import TransactionsPage from './pages/TransactionsPage';
+import AdminPage from './pages/AdminPage';
 
 // Components
 import Navbar from './components/Navbar';
@@ -41,19 +42,32 @@ function App() {
     return element;
   };
 
+  // The API re-checks is_admin on every request, so this is only a UX guard
+  const isAdmin = user?.is_admin === 1 || user?.is_admin === true;
+  const requireAdmin = (element) => {
+    if (!user) return <Navigate to="/login" replace />;
+    if (!isAdmin) return <Navigate to="/dashboard" replace />;
+    return element;
+  };
+
+  // Admins run the console rather than dating, so the seed leaves them without
+  // a profile. Requiring one would strand them on /onboarding with no way out.
+  const landing = user ? (profile ? '/dashboard' : isAdmin ? '/admin' : '/onboarding') : '/login';
+
   return (
     <>
-      {user && profile && location.pathname !== '/onboarding' && <Navbar />}
+      {user && (profile || isAdmin) && location.pathname !== '/onboarding' && <Navbar />}
       <Routes>
-        <Route path="/" element={user && profile ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
-        <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
-        <Route path="/register" element={user ? <Navigate to="/dashboard" replace /> : <RegisterPage />} />
+        <Route path="/" element={<Navigate to={landing} replace />} />
+        <Route path="/login" element={user ? <Navigate to={landing} replace /> : <LoginPage />} />
+        <Route path="/register" element={user ? <Navigate to={landing} replace /> : <RegisterPage />} />
         <Route path="/onboarding" element={requireAuth(<OnboardingPage />)} />
         <Route path="/dashboard" element={requireProfile(<DashboardPage />)} />
         <Route path="/catalogue" element={requireProfile(<CataloguePage />)} />
         <Route path="/chat/:partnerId" element={requireProfile(<ChatPage />)} />
         <Route path="/profile" element={requireProfile(<ProfilePage />)} />
         <Route path="/transactions" element={requireProfile(<TransactionsPage />)} />
+        <Route path="/admin" element={requireAdmin(<AdminPage />)} />
       </Routes>
     </>
   );

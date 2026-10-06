@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
+<!-- Font Awesome 6: single icon set for the whole UI (replaces inline SVG + emoji) -->
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha384-dABdfBfUoC8vJUBOwGVdm8L9qlMWaHTIfXt+7GnZCIo=" crossorigin="anonymous" referrerpolicy="no-referrer" />
 <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
@@ -32,7 +35,7 @@
         <div class="avatar-wrap avatar-xl">
           <img id="sumPhoto" class="avatar" src="" alt="" />
           <button class="avatar-edit" type="button" id="shufflePhoto" title="Change photo">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            <i class="fa-solid fa-shuffle" aria-hidden="true" style="font-size:15px"></i>
           </button>
         </div>
 
@@ -117,7 +120,7 @@
           <div class="field mt-5">
             <label class="label" for="fCity">City *</label>
             <div class="input-wrap">
-              <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <i class="input-icon fa-solid fa-location-dot" aria-hidden="true"></i>
               <input class="input has-icon" id="fCity" name="city" type="text" placeholder="San Francisco, CA" />
             </div>
             <span class="error-text hide" data-error-for="city"></span>
@@ -150,6 +153,27 @@
             <span class="small muted" id="savedHint"></span>
           </div>
         </form>
+
+        <!-- Visibility: boosts -->
+        <div class="card mt-6">
+          <div class="between mb-5">
+            <div>
+              <h2 style="font-size:1.15rem">Boost your visibility</h2>
+              <p class="tiny muted mt-2" id="boostPlanNote">Your plan includes a monthly boost allowance.</p>
+            </div>
+            <span class="badge badge-soft" id="boostActiveCount">0 active</span>
+          </div>
+          <div class="boost-grid" id="boostGrid"></div>
+        </div>
+
+        <!-- Super Likes activity -->
+        <div class="card mt-6">
+          <div class="between mb-5">
+            <h2 style="font-size:1.15rem">Super Likes</h2>
+            <a class="btn btn-outline btn-sm" href="catalogue.html">Send more</a>
+          </div>
+          <div id="superLikeList"></div>
+        </div>
 
         <!-- Unlocked partners overview -->
         <div class="card mt-6">
@@ -289,6 +313,8 @@
     syncTiles();
     renderChips();
     renderSummary();
+    renderBoosts();
+    renderSuperLikes();
     clearErrors();
   }
 
@@ -369,6 +395,94 @@
     }, 600);
   });
 
+  /* ---------- Boosts ---------- */
+  function renderBoosts() {
+    var pricing = App.pricing();
+    var active = App.activeBoosts();
+    var plan = App.currentPlan();
+
+    document.getElementById('boostActiveCount').textContent = active.length + ' active';
+    document.getElementById('boostPlanNote').textContent = plan.status === 'active'
+      ? 'Your ' + plan.label + ' plan includes ' +
+        (pricing.boosts.filter(function (b) { return b.included; }).length ? 'some of these' : 'none of these') +
+        ' every month.'
+      : 'Free plan: 1 Spotlight boost per month. Paid plans include more.';
+
+    document.getElementById('boostGrid').innerHTML = pricing.boosts.map(function (b) {
+      return '<div class="boost-card">' +
+        '<div class="boost-icon">' + (b.id === 'turbo' ? '<i class="fa-solid fa-bolt" aria-hidden="true"></i>' : '<i class="fa-solid fa-lightbulb" aria-hidden="true"></i>') + '</div>' +
+        '<div class="boost-name">' + App.esc(b.label) + '</div>' +
+        '<div class="boost-note">' + App.esc(b.note) + '</div>' +
+        '<div class="boost-meta">' +
+          '<span class="boost-price">' + App.money(b.price) + '</span>' +
+          '<span class="boost-x">' + b.multiplier + 'x</span>' +
+        '</div>' +
+        (b.included ? '<span class="boost-included">Included in your plan</span>' : '') +
+        '<button class="btn ' + (b.included ? 'btn-outline' : 'btn-primary') + ' btn-sm btn-block mt-4" type="button" data-boost="' + b.id + '">' +
+          (b.included ? 'Use free boost' : 'Boost for ' + App.money(b.price)) +
+        '</button>' +
+      '</div>';
+    }).join('');
+  }
+
+  document.getElementById('boostGrid').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-boost]');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Activating';
+
+    App.startBoost(btn.getAttribute('data-boost')).then(function (res) {
+      renderBoosts();
+      renderSummary();
+      App.refreshChrome();
+      App.toast(res.label + ' boost active', res.message, 'success');
+    }).catch(function (err) {
+      renderBoosts();
+      App.toast('Boost failed', err.message, 'error');
+    });
+  });
+
+  /* ---------- Super Likes ---------- */
+  function renderSuperLikes() {
+    var wrap = document.getElementById('superLikeList');
+    var sent = App.state().superLikesSent || [];
+    var got = App.state().superLikesReceived || [];
+
+    if (!sent.length && !got.length) {
+      wrap.innerHTML =
+        '<div class="empty" style="padding:var(--s-8) var(--s-4)">' +
+          '<div class="empty-icon"><i class="fa-solid fa-heart" aria-hidden="true"></i></div>' +
+          '<div class="empty-title">No Super Likes yet</div>' +
+          '<div class="empty-text">Super Like someone from the catalogue to jump to the top of their list.</div>' +
+        '</div>';
+      return;
+    }
+
+    wrap.innerHTML =
+      (got.length
+        ? '<div class="eyebrow">Received</div>' +
+          got.map(function (s) {
+            return '<div class="between small" style="padding:var(--s-3) 0;border-bottom:1px dashed var(--border)">' +
+              '<div class="row gap-3"><img class="avatar avatar-xs" src="' + App.esc(s.photo) + '" alt="" />' +
+              '<div><div class="strong">' + App.esc(s.name) + '</div>' +
+              '<div class="tiny muted">' + App.esc(s.message || 'Super Liked you') + '</div></div></div>' +
+              '<span class="tiny muted">' + App.timeAgo(s.at) + '</span>' +
+            '</div>';
+          }).join('')
+        : '') +
+      (sent.length
+        ? '<div class="eyebrow' + (got.length ? ' mt-6' : '') + '">Sent</div>' +
+          sent.map(function (s) {
+            return '<div class="between small" style="padding:var(--s-3) 0;border-bottom:1px dashed var(--border)">' +
+              '<div class="row gap-3"><img class="avatar avatar-xs" src="' + App.esc(s.photo) + '" alt="" />' +
+              '<div><div class="strong">' + App.esc(s.name) + '</div>' +
+              '<div class="tiny muted">' + (s.cost ? 'Charged ' + App.money(s.cost) : 'Included in plan') + '</div></div></div>' +
+              '<span class="tiny muted">' + App.timeAgo(s.at) + '</span>' +
+            '</div>';
+          }).join('')
+        : '');
+  }
+
   /* ---------- Misc actions ---------- */
   document.getElementById('shufflePhoto').addEventListener('click', function () {
     var next = PHOTOS[(PHOTOS.indexOf(profile.photo) + 1) % PHOTOS.length];
@@ -387,7 +501,7 @@
   document.getElementById('logoutBtn').addEventListener('click', function () {
     App.modal(
       '<div class="modal-head"><h3>Log out?</h3>' +
-        '<button class="modal-close" type="button" data-close aria-label="Close">&times;</button></div>' +
+        '<button class="modal-close" type="button" data-close aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>' +
       '<div class="modal-body">' +
         '<p>Your profile, unlocks and conversations stay on this device.</p>' +
         '<div class="modal-foot">' +
@@ -410,7 +524,7 @@
   document.getElementById('wipeBtn').addEventListener('click', function () {
     App.modal(
       '<div class="modal-head"><h3>Reset all local data</h3>' +
-        '<button class="modal-close" type="button" data-close aria-label="Close">&times;</button></div>' +
+        '<button class="modal-close" type="button" data-close aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>' +
       '<div class="modal-body">' +
         '<p>This permanently clears your account, wallet, unlocks and every message stored in this browser.</p>' +
         '<div class="modal-foot">' +

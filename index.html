@@ -8,6 +8,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
+<!-- Font Awesome 6: single icon set for the whole UI (replaces inline SVG + emoji) -->
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha384-dABdfBfUoC8vJUBOwGVdm8L9qlMWaHTIfXt+7GnZCIo=" crossorigin="anonymous" referrerpolicy="no-referrer" />
 <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
@@ -33,7 +36,7 @@
       <div class="hero-actions">
         <a class="btn btn-primary btn-lg" href="register.html">
           Create free account
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
         </a>
         <a class="btn btn-outline btn-lg" href="login.html">Sign in</a>
       </div>
@@ -289,7 +292,9 @@
     <div class="grid grid-3">
       <article class="quote reveal">
         <div class="quote-mark">&ldquo;</div>
-        <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <div class="stars">
+          <i class="fa-solid fa-star" aria-hidden="true"></i><i class="fa-solid fa-star" aria-hidden="true"></i><i class="fa-solid fa-star" aria-hidden="true"></i><i class="fa-solid fa-star" aria-hidden="true"></i><i class="fa-solid fa-star" aria-hidden="true"></i><span class="sr-only">5 out of 5 stars</span>
+        </div>
         <p class="mt-4">The tier system is honest. I unlocked two conversations, one turned into a date, and I did not pay for the other fifty profiles I browsed.</p>
         <div class="row gap-3 mt-6">
           <img class="avatar avatar-sm" src="https://i.pravatar.cc/100?img=20" alt="" />
@@ -302,7 +307,9 @@
 
       <article class="quote reveal" data-delay="90">
         <div class="quote-mark">&ldquo;</div>
-        <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <div class="stars">
+          <i class="fa-solid fa-star" aria-hidden="true"></i><i class="fa-solid fa-star" aria-hidden="true"></i><i class="fa-solid fa-star" aria-hidden="true"></i><i class="fa-solid fa-star" aria-hidden="true"></i><i class="fa-solid fa-star" aria-hidden="true"></i><span class="sr-only">5 out of 5 stars</span>
+        </div>
         <p class="mt-4">The interest alerts are the feature I did not know I needed. Knowing someone looked is enough to make you actually reply.</p>
         <div class="row gap-3 mt-6">
           <img class="avatar avatar-sm" src="https://i.pravatar.cc/100?img=33" alt="" />
@@ -315,7 +322,9 @@
 
       <article class="quote reveal" data-delay="180">
         <div class="quote-mark">&ldquo;</div>
-        <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <div class="stars">
+          <i class="fa-solid fa-star" aria-hidden="true"></i><i class="fa-solid fa-star" aria-hidden="true"></i><i class="fa-solid fa-star" aria-hidden="true"></i><i class="fa-solid fa-star" aria-hidden="true"></i><i class="fa-solid fa-star" aria-hidden="true"></i><span class="sr-only">5 out of 5 stars</span>
+        </div>
         <p class="mt-4">As someone shy, having a companion to keep a conversation warm while I was busy made all the difference. Zero pressure.</p>
         <div class="row gap-3 mt-6">
           <img class="avatar avatar-sm" src="https://i.pravatar.cc/100?img=49" alt="" />
@@ -416,7 +425,7 @@
           '<a class="btn btn-outline btn-sm hide-sm" href="login.html">Sign in</a>' +
           '<a class="btn btn-primary btn-sm" href="register.html">Join free</a>' +
           '<button class="nav-toggle" id="navToggle" type="button" aria-label="Menu">' +
-            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>' +
+            '<i class="fa-solid fa-bars" aria-hidden="true"></i>' +
           '</button>' +
         '</div>' +
       '</div>';

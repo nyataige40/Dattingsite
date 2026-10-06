@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Admin console — Dattingsite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
+<!-- Font Awesome 6: single icon set for the whole UI (replaces inline SVG + emoji) -->
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha384-dABdfBfUoC8vJUBOwGVdm8L9qlMWaHTIfXt+7GnZCIo=" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<header class="nav" data-navbar></header>
+
+<main class="page">
+  <div class="container">
+
+    <div class="dash-head">
+      <div>
+        <span class="eyebrow">Platform operations</span>
+        <h1 class="dash-title">Admin console</h1>
+        <p class="muted mt-2">Revenue, member growth and the moderation queue in one place.</p>
+      </div>
+      <div class="row gap-2">
+        <button class="btn btn-outline btn-sm" type="button" id="refreshBtn">
+          <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+          Refresh
+        </button>
+        <button class="btn btn-primary btn-sm" type="button" id="maintenanceBtn">Run maintenance</button>
+      </div>
+    </div>
+
+    <!-- ============ Tabs ============ -->
+    <div class="segmented mb-6" id="adminTabs">
+      <button class="segmented-btn is-active" type="button" data-tab="overview">Overview</button>
+      <button class="segmented-btn" type="button" data-tab="reports">Moderation <span id="tabReports" class="badge-soft">0</span></button>
+      <button class="segmented-btn" type="button" data-tab="tickets">Support <span id="tabTickets" class="badge-soft">0</span></button>
+      <button class="segmented-btn" type="button" data-tab="audit">Audit log</button>
+    </div>
+
+    <!-- ============ OVERVIEW ============ -->
+    <section data-panel="overview">
+
+      <div class="grid grid-4 mb-6" id="kpis"></div>
+
+      <div class="grid grid-2 mb-6">
+        <article class="card">
+          <div class="between mb-5">
+            <div>
+              <h2 style="font-size:1.05rem">Revenue, last 14 days</h2>
+              <p class="tiny muted mt-2" id="revSub">All completed payments</p>
+            </div>
+            <span class="stat-num kpi-accent" id="revTotal" style="font-size:1.6rem">$0.00</span>
+          </div>
+          <div class="chart" id="revChart"></div>
+        </article>
+
+        <article class="card">
+          <div class="between mb-5">
+            <div>
+              <h2 style="font-size:1.05rem">Revenue mix</h2>
+              <p class="tiny muted mt-2">By unlock tier and by payment method</p>
+            </div>
+          </div>
+          <div class="stack gap-5" id="revMix"></div>
+        </article>
+      </div>
+
+      <div class="grid grid-2">
+        <article class="card">
+          <h2 style="font-size:1.05rem">Recurring revenue</h2>
+          <p class="tiny muted mt-2">Active subscriptions and monthly recurring revenue</p>
+          <div class="stack gap-4 mt-5" id="subsPanel"></div>
+        </article>
+
+        <article class="card">
+          <h2 style="font-size:1.05rem">Needs attention</h2>
+          <p class="tiny muted mt-2">Open work waiting on a human</p>
+          <div class="stack gap-3 mt-5" id="attention"></div>
+        </article>
+      </div>
+
+    </section>
+
+    <!-- ============ MODERATION ============ -->
+    <section data-panel="reports" class="hide">
+      <div class="between mb-5">
+        <div>
+          <h2 style="font-size:1.15rem">Moderation queue</h2>
+          <p class="muted mt-2">Reports raised by members. High severity is ordered first.</p>
+        </div>
+        <div class="segmented" id="reportFilter">
+          <button class="segmented-btn is-active" type="button" data-status="all">All</button>
+          <button class="segmented-btn" type="button" data-status="pending">Pending</button>
+          <button class="segmented-btn" type="button" data-status="reviewing">Reviewing</button>
+          <button class="segmented-btn" type="button" data-status="resolved">Resolved</button>
+        </div>
+      </div>
+
+      <article class="card card-flush">
+        <div class="table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Severity</th>
+                <th>Subject</th>
+                <th>Reason</th>
+                <th>Reported by</th>
+                <th>Status</th>
+                <th>When</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="reportRows"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <div id="reportsEmpty" class="hide">
+        <div class="empty">
+          <div class="empty-icon">&#9989;</div>
+          <div class="empty-title">Queue is clear</div>
+          <div class="empty-text">Nothing is waiting for review in this view.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SUPPORT ============ -->
+    <section data-panel="tickets" class="hide">
+      <div class="between mb-5">
+        <div>
+          <h2 style="font-size:1.15rem">Support tickets</h2>
+          <p class="muted mt-2">Customer conversations, highest priority first.</p>
+        </div>
+        <div class="row gap-2">
+          <div class="segmented" id="ticketFilter">
+            <button class="segmented-btn is-active" type="button" data-status="all">All</button>
+            <button class="segmented-btn" type="button" data-status="open">Open</button>
+            <button class="segmented-btn" type="button" data-status="pending">Pending</button>
+            <button class="segmented-btn" type="button" data-status="resolved">Resolved</button>
+          </div>
+          <button class="btn btn-outline btn-sm" type="button" id="newTicketBtn">New ticket</button>
+        </div>
+      </div>
+
+      <div class="stack gap-3" id="ticketList"></div>
+
+      <div id="ticketsEmpty" class="hide">
+        <div class="empty">
+          <div class="empty-icon">&#128231;</div>
+          <div class="empty-title">No tickets here</div>
+          <div class="empty-text">Nothing matches this filter.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ AUDIT ============ -->
+    <section data-panel="audit" class="hide">
+      <div class="mb-5">
+        <h2 style="font-size:1.15rem">Admin audit log</h2>
+        <p class="muted mt-2">Every administrative action is recorded here.</p>
+      </div>
+      <article class="card">
+        <div id="auditList"></div>
+      </article>
+    </section>
+
+  </div>
+</main>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+  App.requireAuth(true);
+  App.boot('admin.html');
+
+  if (!App.adminGuard()) {
+    document.querySelector('.page').innerHTML =
+      '<div class="empty" style="min-height:50vh">' +
+        '<div class="empty-icon">&#128274;</div>' +
+        '<div class="empty-title">Admins only</div>' +
+        '<div class="empty-text">This console is restricted to platform staff. Sign in with an admin account to continue.</div>' +
+        '<a class="btn btn-primary mt-6" href="dashboard.html">Back to the app</a>' +
+      '</div>';
+  } else {
+
+  var reportFilter = 'all';
+  var ticketFilter = 'all';
+
+  function statusClass(s) {
+    return 'st-' + (s === 'pending' ? 'pending-b' : s);
+  }
+
+  function renderKpis(a) {
+    var o = a.overview;
+    var cards = [
+      { label: 'Gross revenue', value: App.money(o.grossRevenue), sub: o.transactions + ' payments', cls: 'kpi-accent' },
+      { label: 'MRR', value: App.money(o.mrr), sub: o.activeSubscriptions + ' active subscription' + (o.activeSubscriptions === 1 ? '' : 's'), cls: 'kpi-good' },
+      { label: 'Unlocks', value: o.unlocks, sub: App.money(o.unlockRevenue) + ' from ' + o.partners + ' partners' },
+      { label: 'Wallet balance', value: App.money(o.walletBalance), sub: o.planLabel + ' plan' }
+    ];
+
+    document.getElementById('kpis').innerHTML = cards.map(function (c) {
+      return '<div class="kpi">' +
+        '<span class="kpi-label">' + c.label + '</span>' +
+        '<span class="kpi-value ' + (c.cls || '') + '">' + c.value + '</span>' +
+        '<span class="kpi-sub">' + App.esc(c.sub) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  function renderRevChart(a) {
+    var series = a.revenueSeries;
+    var max = Math.max.apply(null, series.map(function (d) { return d.value; }).concat([1]));
+    document.getElementById('revTotal').textContent = App.money(series.reduce(function (s, d) { return s + d.value; }, 0));
+    document.getElementById('revChart').innerHTML = series.map(function (d) {
+      var pct = Math.max(3, Math.round((d.value / max) * 100));
+      return '<div class="chart-col" title="' + d.label + ': ' + App.money(d.value) + '">' +
+        '<span class="chart-value">' + (d.value ? App.money(d.value) : '') + '</span>' +
+        '<div class="chart-bar" style="height:' + pct + '%"></div>' +
+        '<span class="chart-label">' + d.label + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  function mixBars(obj, label) {
+    var keys = Object.keys(obj);
+    if (!keys.length) return '<p class="tiny muted">No ' + label + ' yet.</p>';
+    var total = keys.reduce(function (s, k) { return s + obj[k]; }, 0) || 1;
+    return keys.map(function (k) {
+      var pct = Math.round((obj[k] / total) * 100);
+      return '<div>' +
+        '<div class="between small mb-2"><span class="strong">' + App.esc(k) + '</span>' +
+        '<span class="muted">' + App.money(obj[k]) + ' &middot; ' + pct + '%</span></div>' +
+        '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function renderMix(a) {
+    document.getElementById('revMix').innerHTML =
+      '<div><span class="eyebrow" style="margin-bottom:var(--s-3)">By tier</span>' + mixBars(a.revenueByTier, 'revenue') + '</div>' +
+      '<div><span class="eyebrow" style="margin-bottom:var(--s-3)">By method</span>' + mixBars(a.revenueByMethod, 'revenue') + '</div>';
+  }
+
+  function renderSubs(a) {
+    var o = a.overview;
+    document.getElementById('subsPanel').innerHTML =
+      '<div class="between"><span class="muted small">Monthly recurring revenue</span><span class="strong">' + App.money(o.mrr) + '</span></div>' +
+      '<div class="between"><span class="muted small">Active subscriptions</span><span class="strong">' + o.activeSubscriptions + '</span></div>' +
+      '<div class="between"><span class="muted small">Subscription revenue (all time)</span><span class="strong">' + App.money(o.subscriptionRevenue) + '</span></div>' +
+      '<div class="between"><span class="muted small">Boost revenue</span><span class="strong">' + App.money(o.boostRevenue) + '</span></div>' +
+      '<div class="between"><span class="muted small">Super Like revenue</span><span class="strong">' + App.money(o.superLikeRevenue) + '</span></div>' +
+      '<div class="divider" style="margin:var(--s-2) 0"></div>' +
+      '<div class="between"><span class="muted small">Active boosts right now</span><span class="strong">' + o.activeBoosts + '</span></div>' +
+      '<div class="between"><span class="muted small">Super Likes sent</span><span class="strong">' + o.superLikes + '</span></div>';
+  }
+
+  function renderAttention(a) {
+    var o = a.overview;
+    var pending = a.reports.filter(function (r) { return r.status === 'pending'; }).length;
+    var open = a.tickets.filter(function (t) { return t.status === 'open'; }).length;
+
+    var rows = [
+      { n: pending, label: 'reports awaiting review', tab: 'reports', tone: pending ? 'kpi-accent' : '' },
+      { n: open, label: 'open support tickets', tab: 'tickets', tone: open ? 'kpi-accent' : '' }
+    ];
+
+    document.getElementById('attention').innerHTML = rows.map(function (r) {
+      return '<button class="tx-row" type="button" data-goto="' + r.tab + '" style="width:100%;text-align:left;cursor:pointer">' +
+        '<div class="tx-icon">' + (r.n ? '&#9888;' : '&#10003;') + '</div>' +
+        '<div class="tx-body">' +
+          '<div class="tx-name">' + r.n + ' ' + r.label + '</div>' +
+          '<div class="tx-meta">' + (r.n ? 'Click to review' : 'Nothing outstanding') + '</div>' +
+        '</div>' +
+        '<span class="small strong" style="color:var(--primary)">&rarr;</span>' +
+      '</button>';
+    }).join('');
+  }
+
+  function renderReports(a) {
+    var list = reportFilter === 'all'
+      ? a.reports.slice().sort(function (x, y) {
+          var rank = { high: 0, medium: 1, low: 2 };
+          return (rank[x.severity] - rank[y.severity]) || (y.at - x.at);
+        })
+      : a.reports.filter(function (r) { return r.status === reportFilter; });
+
+    var body = document.getElementById('reportRows');
+    document.getElementById('reportsEmpty').classList.toggle('hide', list.length > 0);
+    document.querySelector('[data-panel="reports"] .card-flush').classList.toggle('hide', list.length === 0);
+
+    body.innerHTML = list.map(function (r) {
+      var open = r.status === 'pending' || r.status === 'reviewing';
+      return '<tr>' +
+        '<td><span class="sev sev-' + r.severity + '"></span>' + r.severity.charAt(0).toUpperCase() + r.severity.slice(1) + '</td>' +
+        '<td><div class="strong">' + App.esc(r.subjectName) + '</div><div class="tiny muted">' + App.esc(r.subject) + '</div></td>' +
+        '<td><div>' + App.esc(r.reason) + '</div><div class="tiny muted ellipsis" style="max-width:26ch">' + App.esc(r.details) + '</div></td>' +
+        '<td>' + App.esc(r.reporter) + '</td>' +
+        '<td><span class="badge ' + statusClass(r.status) + '">' + r.status + '</span></td>' +
+        '<td class="tiny muted">' + App.timeAgo(r.at) + '</td>' +
+        '<td>' + (open
+          ? '<button class="btn btn-outline btn-sm" type="button" data-review="' + r.id + '">Review</button>'
+          : '<span class="tiny muted">' + App.esc(r.note || 'closed') + '</span>') + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function renderTickets(a) {
+    var list = ticketFilter === 'all'
+      ? a.tickets
+      : a.tickets.filter(function (t) { return t.status === ticketFilter; });
+
+    var wrap = document.getElementById('ticketList');
+    document.getElementById('ticketsEmpty').classList.toggle('hide', list.length > 0);
+    wrap.classList.toggle('hide', list.length === 0);
+
+    var rank = { high: 0, normal: 1, low: 2 };
+    wrap.innerHTML = list.slice().sort(function (x, y) {
+      return (rank[x.priority] - rank[y.priority]) || (y.at - x.at);
+    }).map(function (t) {
+      return '<article class="card">' +
+        '<div class="between mb-3">' +
+          '<div class="row gap-3 wrap">' +
+            '<span class="badge badge-soft">' + App.esc(t.category) + '</span>' +
+            '<span class="strong">' + App.esc(t.subject) + '</span>' +
+          '</div>' +
+          '<span class="badge ' + statusClass(t.status) + '">' + t.status + '</span>' +
+        '</div>' +
+        '<p class="small">' + App.esc(t.body) + '</p>' +
+        '<div class="between mt-4">' +
+          '<span class="tiny muted">' + App.esc(t.user) + ' &middot; ' + App.esc(t.email) + ' &middot; ' + App.timeAgo(t.at) + ' &middot; ' + t.priority + ' priority</span>' +
+          '<div class="row gap-2">' +
+            (t.status !== 'resolved'
+              ? '<button class="btn btn-outline btn-sm" type="button" data-ticket="' + t.id + '" data-next="resolved">Resolve</button>'
+              : '') +
+            (t.status === 'open'
+              ? '<button class="btn btn-ghost btn-sm" type="button" data-ticket="' + t.id + '" data-next="pending">Wait</button>'
+              : '') +
+            (t.status !== 'closed'
+              ? '<button class="btn btn-ghost btn-sm" type="button" data-ticket="' + t.id + '" data-next="closed">Close</button>'
+              : '') +
+          '</div>' +
+        '</div>' +
+      '</article>';
+    }).join('');
+  }
+
+  function renderAudit(a) {
+    var list = a.audit || [];
+    document.getElementById('auditList').innerHTML = list.length
+      ? list.map(function (e) {
+          return '<div class="audit-row">' +
+            '<span class="audit-action">' + App.esc(e.action) + '</span>' +
+            '<span class="audit-entity">' + App.esc(e.entity) +
+              (e.note ? ' <span class="tiny muted">— ' + App.esc(e.note) + '</span>' : '') + '</span>' +
+            '<span class="audit-time">' + App.esc(e.by || 'Admin') + ' &middot; ' + App.timeAgo(e.at) + '</span>' +
+          '</div>';
+        }).join('')
+      : '<p class="tiny muted">No admin actions recorded yet.</p>';
+  }
+
+  function renderAll() {
+    var a = App.adminAnalytics();
+    renderKpis(a);
+    renderRevChart(a);
+    renderMix(a);
+    renderSubs(a);
+    renderAttention(a);
+    renderReports(a);
+    renderTickets(a);
+    renderAudit(a);
+
+    document.getElementById('tabReports').textContent = a.reports.filter(function (r) { return r.status === 'pending'; }).length;
+    document.getElementById('tabTickets').textContent = a.tickets.filter(function (t) { return t.status === 'open'; }).length;
+  }
+
+  /* ---------- Tabs ---------- */
+  function showTab(name) {
+    document.querySelectorAll('[data-tab]').forEach(function (b) {
+      b.classList.toggle('is-active', b.getAttribute('data-tab') === name);
+    });
+    document.querySelectorAll('[data-panel]').forEach(function (p) {
+      p.classList.toggle('hide', p.getAttribute('data-panel') !== name);
+    });
+  }
+
+  document.getElementById('adminTabs').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-tab]');
+    if (btn) showTab(btn.getAttribute('data-tab'));
+  });
+
+  document.addEventListener('click', function (e) {
+    var goto = e.target.closest('[data-goto]');
+    if (goto) showTab(goto.getAttribute('data-goto'));
+  });
+
+  /* ---------- Filters ---------- */
+  document.getElementById('reportFilter').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-status]');
+    if (!btn) return;
+    reportFilter = btn.getAttribute('data-status');
+    this.querySelectorAll('.segmented-btn').forEach(function (b) { b.classList.remove('is-active'); });
+    btn.classList.add('is-active');
+    renderReports(App.adminAnalytics());
+  });
+
+  document.getElementById('ticketFilter').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-status]');
+    if (!btn) return;
+    ticketFilter = btn.getAttribute('data-status');
+    this.querySelectorAll('.segmented-btn').forEach(function (b) { b.classList.remove('is-active'); });
+    btn.classList.add('is-active');
+    renderTickets(App.adminAnalytics());
+  });
+
+  /* ---------- Review a report ---------- */
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-review]');
+    if (!btn) return;
+    var id = btn.getAttribute('data-review');
+    var a = App.adminAnalytics();
+    var r = a.reports.filter(function (x) { return x.id === id; })[0];
+    if (!r) return;
+    var outcome = 'resolved';
+
+    App.modal(
+      '<div class="modal-head">' +
+        '<div class="modal-hero">' +
+          '<div class="modal-hero-icon">&#9888;</div>' +
+          '<div>' +
+            '<h3>' + App.esc(r.reason) + '</h3>' +
+            '<p class="small" style="color:rgba(255,255,255,.86);margin-top:3px">' +
+              App.esc(r.subject) + ': ' + App.esc(r.subjectName) + ' &middot; ' + r.severity + ' severity</p>' +
+          '</div>' +
+        '</div>' +
+        '<button class="modal-close" type="button" data-close aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>' +
+      '</div>' +
+      '<div class="modal-body">' +
+        '<div class="alert alert-info mb-6"><span>&#128203;</span><span>' + App.esc(r.details) + '</span></div>' +
+        '<div class="small muted mb-2">Reported by ' + App.esc(r.reporter) + ' &middot; ' + App.timeAgo(r.at) + '</div>' +
+        '<div class="field mt-5">' +
+          '<label class="label" for="modNote">Moderator note</label>' +
+          '<textarea class="input" id="modNote" rows="3" placeholder="What action did you take? This is written to the audit log."></textarea>' +
+        '</div>' +
+        '<div class="field mt-5">' +
+          '<label class="label">Outcome</label>' +
+          '<div class="tiles" id="outcomeTiles">' +
+            ['resolved', 'actioned', 'dismissed', 'reviewing'].map(function (o) {
+              return '<label class="tile' + (o === outcome ? ' is-active' : '') + '" data-outcome="' + o + '">' +
+                '<input type="radio" name="outcome" class="sr-only"' + (o === outcome ? ' checked' : '') + ' />' +
+                '<span class="tile-title">' + o.charAt(0).toUpperCase() + o.slice(1) + '</span>' +
+                '<span class="tile-check">&#10003;</span>' +
+              '</label>';
+            }).join('') +
+          '</div>' +
+        '</div>' +
+        '<div id="modStatus" class="mt-4"></div>' +
+        '<div class="modal-foot">' +
+          '<button class="btn btn-ghost" type="button" data-close>Cancel</button>' +
+          '<button class="btn btn-primary" type="button" id="confirmReview">Apply outcome</button>' +
+        '</div>' +
+      '</div>',
+      {
+        wide: true,
+        onMount: function (root) {
+          root.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', App.closeModal); });
+
+          root.querySelectorAll('#outcomeTiles .tile').forEach(function (tile) {
+            tile.addEventListener('click', function () {
+              outcome = tile.getAttribute('data-outcome');
+              root.querySelectorAll('#outcomeTiles .tile').forEach(function (t) { t.classList.toggle('is-active', t === tile); });
+            });
+          });
+
+          root.querySelector('#confirmReview').addEventListener('click', function () {
+            var btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Saving';
+            var note = root.querySelector('#modNote').value.trim();
+
+            App.resolveReport(r.id, outcome, note).then(function (res) {
+              App.closeModal();
+              renderAll();
+              App.toast('Report updated', res.message, 'success');
+            }).catch(function (err) {
+              btn.disabled = false;
+              btn.textContent = 'Apply outcome';
+              root.querySelector('#modStatus').innerHTML =
+                '<div class="alert alert-danger"><span>&#9888;</span><span>' + App.esc(err.message) + '</span></div>';
+            });
+          });
+        }
+      }
+    );
+  });
+
+  /* ---------- Ticket status ---------- */
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-ticket]');
+    if (!btn) return;
+    var id = btn.getAttribute('data-ticket');
+    var next = btn.getAttribute('data-next');
+    btn.disabled = true;
+
+    App.setTicketStatus(id, next).then(function (res) {
+      renderAll();
+      App.toast('Ticket updated', res.message, 'success', 2400);
+    }).catch(function (err) {
+      btn.disabled = false;
+      App.toast('Could not update', err.message, 'error');
+    });
+  });
+
+  /* ---------- New ticket ---------- */
+  document.getElementById('newTicketBtn').addEventListener('click', function () {
+    App.modal(
+      '<div class="modal-head"><h3>Open a support ticket</h3>' +
+        '<button class="modal-close" type="button" data-close aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>' +
+      '<div class="modal-body">' +
+        '<div class="grid grid-2">' +
+          '<div class="field"><label class="label" for="tkCat">Category</label>' +
+            '<select class="input" id="tkCat"><option>Billing</option><option>Account</option><option>General</option><option>Safety</option></select></div>' +
+          '<div class="field"><label class="label" for="tkPri">Priority</label>' +
+            '<select class="input" id="tkPri"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select></div>' +
+        '</div>' +
+        '<div class="field mt-5"><label class="label" for="tkSub">Subject</label>' +
+          '<input class="input" id="tkSub" type="text" placeholder="One line summary" /></div>' +
+        '<div class="field mt-5"><label class="label" for="tkBody">Details</label>' +
+          '<textarea class="input" id="tkBody" rows="4" placeholder="What happened, and what do you need?"></textarea></div>' +
+        '<div class="modal-foot">' +
+          '<button class="btn btn-ghost" type="button" data-close>Cancel</button>' +
+          '<button class="btn btn-primary" type="button" id="submitTicket">Submit</button>' +
+        '</div>' +
+      '</div>',
+      {
+        onMount: function (root) {
+          root.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', App.closeModal); });
+          root.querySelector('#submitTicket').addEventListener('click', function () {
+            var subject = root.querySelector('#tkSub').value.trim();
+            var body = root.querySelector('#tkBody').value.trim();
+            if (!subject) {
+              App.toast('Subject required', 'Add a short summary first.', 'error');
+              return;
+            }
+            App.createTicket(
+              root.querySelector('#tkCat').value,
+              subject,
+              body,
+              root.querySelector('#tkPri').value
+            ).then(function () {
+              App.closeModal();
+              ticketFilter = 'all';
+              document.querySelectorAll('#ticketFilter .segmented-btn').forEach(function (b) {
+                b.classList.toggle('is-active', b.getAttribute('data-status') === 'all');
+              });
+              renderAll();
+              showTab('tickets');
+              App.toast('Ticket created', 'It is now in the support queue.', 'success');
+            });
+          });
+        }
+      }
+    );
+  });
+
+  /* ---------- Maintenance ---------- */
+  document.getElementById('maintenanceBtn').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner spinner-dark"></span> Running';
+    setTimeout(function () {
+      btn.disabled = false;
+      btn.textContent = 'Run maintenance';
+      renderAll();
+      App.toast('Maintenance complete', 'Lapsed subscriptions retired and indexes checked.', 'success');
+    }, 1100);
+  });
+
+  document.getElementById('refreshBtn').addEventListener('click', function () {
+    renderAll();
+    App.toast('Dashboard refreshed', null, 'info', 1800);
+  });
+
+  document.addEventListener('ds:plan-changed', renderAll);
+
+  renderAll();
+  }
+</script>
+</body>
+</html>
